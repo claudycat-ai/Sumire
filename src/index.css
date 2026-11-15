@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+  --font-serif: "Hiragino Mincho ProN", "Yu Mincho", "MS Mincho", serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* OS 設定に応じてベースの背景色・文字色を切り替える。
+   各コンポーネント側は Tailwind の `dark:` プレフィックスで OS のダーク設定に追従する。 */
+:root {
+  color-scheme: light;
+  background-color: white;
+  color: rgb(24 24 27); /* zinc-900 */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    background-color: rgb(9 9 11); /* zinc-950 */
+    color: rgb(244 244 245); /* zinc-100 */
+  }
+}

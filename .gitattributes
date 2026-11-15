@@ -1,0 +1,3 @@
+# 個別機能の作業記録(.kiro/specs/)は、配布用の書き出し(git archive)に含めない。
+# 恒久的な仕様は docs/spec/ にある。
+.kiro/specs export-ignore
