@@ -10,6 +10,10 @@ Sumire treats AI as a "skilled co-author" and offers a Copilot-style Tab adoptio
 
 MVP complete, polish phase. Distributed binaries are unsigned (see "Installation Notes" below).
 
+Sumire is a tool one person develops for their own writing. It comes with no guarantee that it works. While the version is 0.x, the settings file format and the controls may change without backward compatibility.
+
+Please report bugs and requests in Issues. They will be read, but a reply or a fix is not promised. Pull requests are considered only when they fit "Sumire が守るべき軸" (the axes Sumire keeps) in [`docs/spec/vision.md`](docs/spec/vision.md). For a large change, open an issue first.
+
 ## Stance
 
 Sumire is a supplementary tool that assumes **the writer is the primary author**.
@@ -49,8 +53,6 @@ The summary below is as of November 2026. Definitions and enforcement change, so
 This tool is not code-signed, so Windows SmartScreen will display a warning on first launch. This is a generic warning shown for all unsigned applications, not a Sumire-specific issue.
 
 On the warning screen, click **More info**, then click **Run anyway** to launch.
-
-<!-- TODO: place screenshot at docs/assets/smartscreen-warning.png. Replace this comment with an image link once the screenshot is added. -->
 
 The source code is open; if you have concerns, you can build it yourself (see "Building from Source" below).
 
