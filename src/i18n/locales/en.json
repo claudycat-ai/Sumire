@@ -126,7 +126,34 @@
     "connectionStatusTesting": "Testing…",
     "connectionStatusOk": "OK",
     "connectionStatusFailed": "Failed",
-    "connectionTestNoConfig": "Provider config not loaded"
+    "connectionTestNoConfig": "Provider config not loaded",
+    "template": "Prompt template",
+    "templateHelp": "With no template, the system prompt, settings, and body are joined as-is and sent. For models trained to follow instructions (instruct, it, chat versions, etc.), choose the template that matches the model's format. The choice takes effect from the next suggestion.",
+    "templateOption": {
+      "none": "None (plain concatenation)",
+      "gemma4": "gemma4 (Gemma 4, no thinking)",
+      "gemma4-think": "gemma4-think (Gemma 4, thinking)",
+      "chatml": "chatml (ChatML)",
+      "chatml-nothink": "chatml-nothink (ChatML, no thinking)",
+      "custom": "Custom (sumire.json)",
+      "unreadable": "Unreadable setting"
+    },
+    "templateDesc": {
+      "none": "No template; the content is joined as-is and sent. Suited to models that simply continue text (base models, etc.).",
+      "gemma4": "The Gemma 4 chat format. The model writes the continuation directly in its turn, without thinking.",
+      "gemma4-think": "The Gemma 4 chat format. The model thinks first, then writes the continuation. The thinking is kept apart from the text.",
+      "chatml": "ChatML (the format delimited by <|im_start|>). No instruction to stop thinking is added.",
+      "chatml-nothink": "The ChatML format with an empty thinking block placed first, so the model writes the continuation without thinking."
+    },
+    "templateCustomNote": "A custom template is written in sumire.json. Edit its contents in sumire.json. Choosing an option here replaces the custom template.",
+    "templateCustomInvalidNote": "The custom template in sumire.json has a problem, so no suggestions will be generated as it is. Fix it in sumire.json, or choose an option here.",
+    "templateUnreadableNote": "The template setting in sumire.json can't be read, so no suggestions will be generated as it is. Fix it in sumire.json, or choose an option here.",
+    "templateTagsAdded": "Added the tags that separate thinking from the text (<|channel> and <channel|>) to the thinking settings.",
+    "templateThinkingDisabled": "Thinking separation is turned off, so the thinking text will be mixed into suggestions. Turn it on with thinking in sumire.json.",
+    "templateMaxTokensHint": "Thinking counts toward Max Tokens. A suggestion can come back empty when thinking is cut off, so we recommend raising it to {{min}} or more.",
+    "templateConfirmTitle": "Replace the template setting?",
+    "templateConfirmBody": "The current template written in sumire.json will be replaced with the option you chose. To get it back, you'll need to edit sumire.json.",
+    "templateConfirmAction": "Replace"
   },
   "llamaServer": {
     "stateStopped": "Stopped",

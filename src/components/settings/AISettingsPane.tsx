@@ -1,9 +1,19 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type Dispatch,
+  type SetStateAction,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "@/stores/appStore";
 import { useAIConfigStore } from "@/stores/aiConfigStore";
 import type { AIConfig, ProviderId } from "@/domain/providers/types";
-import { ProviderError } from "@/domain/providers/types";
+import {
+  isLocalCompletionProvider,
+  ProviderError,
+} from "@/domain/providers/types";
 import { SecretStore } from "@/domain/secrets";
 import {
   isReasoningModel,
@@ -14,6 +24,7 @@ import {
 import { toastError, toastInfo } from "@/components/ui/Toast";
 import { emitDevEvent } from "@/lib/devLog";
 import { LlamaServerSettings } from "@/components/settings/LlamaServerSettings";
+import { PromptTemplateField } from "@/components/settings/PromptTemplateField";
 
 interface Props {
   /**
@@ -154,6 +165,24 @@ function buildPatch(form: FormValues, current: AIConfig): Partial<AIConfig> {
   return patch;
 }
 
+/**
+ * フォームの値が保存済みの値と違えば、`buildPatch` の結果で保存する。
+ * 1 秒後の自動保存と、テンプレートを保存する前の先の保存(`flushPendingInput`)の
+ * 両方がこの関数を使い、判定を 2 か所に持たない。
+ */
+async function saveFormIfChanged(
+  providerId: ProviderId,
+  form: FormValues,
+  current: AIConfig,
+): Promise<void> {
+  // 「マウント直後の form 初期化」など、form の値が現在の bundle と完全に
+  // 同じならば save する必要がない。configToForm(current) と form を比較し、
+  // 同値ならスキップする(冗長書き込み防止)。
+  if (formsEqual(form, configToForm(current))) return;
+  const patch = buildPatch(form, current);
+  await useAIConfigStore.getState().updateProviderSection(providerId, patch);
+}
+
 /** 推論モデルで temperature / top_p を送らないことの注記。両方の入力欄から参照する。 */
 const SAMPLING_NOTE_ID = "ai-sampling-ignored-note";
 
@@ -230,17 +259,25 @@ export function AISettingsPane({ projectPath: _projectPath }: Props) {
     const handle = setTimeout(() => {
       const current = providerConfigRef.current;
       if (current == null) return;
-      // 「マウント直後の form 初期化」など、form の値が現在の bundle と完全に
-      // 同じならば save する必要がない。configToForm(current) と form を比較し、
-      // 同値ならスキップする(冗長書き込み防止)。
-      if (formsEqual(form, configToForm(current))) return;
-      const patch = buildPatch(form, current);
-      void useAIConfigStore
-        .getState()
-        .updateProviderSection(selectedAIProvider, patch);
+      void saveFormIfChanged(selectedAIProvider, form, current);
     }, 1000);
     return () => clearTimeout(handle);
   }, [form, selectedAIProvider]);
+
+  // 自動保存を待っている入力を、その場で保存する(`template-settings-ui` spec)。
+  // テンプレートの保存はセクションを置き換え、フォームは保存済みの値で作り直されるので、
+  // 先に保存しないと入力が消える。待ちが無ければ(フォームが保存済みの値と同じなら)何もしない。
+  // 1 秒後の自動保存のタイマーはそのまま残す(発火しても値が同じなので保存しない)。
+  const formRef = useRef<FormValues | null>(form);
+  formRef.current = form;
+  const flushPendingInput = useCallback(async () => {
+    const current = providerConfigRef.current;
+    const pending = formRef.current;
+    if (selectedAIProvider == null || current == null || pending == null) {
+      return;
+    }
+    await saveFormIfChanged(selectedAIProvider, pending, current);
+  }, [selectedAIProvider]);
 
   if (selectedAIProvider === null) {
     return (
@@ -348,6 +385,18 @@ export function AISettingsPane({ projectPath: _projectPath }: Props) {
             />
           </div>
         )}
+
+        {isLocalCompletionProvider(selectedAIProvider) &&
+          providerConfig != null && (
+            <PromptTemplateField
+              providerId={selectedAIProvider}
+              config={providerConfig}
+              maxTokensInput={form.maxTokens}
+              flushPendingInput={flushPendingInput}
+              inputClass={inputClass}
+              labelClass={labelClass}
+            />
+          )}
 
         <fieldset className="space-y-3 rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
           <legend className="px-1 text-xs font-medium text-zinc-700 dark:text-zinc-300">

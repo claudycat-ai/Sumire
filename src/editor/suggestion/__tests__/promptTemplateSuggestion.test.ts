@@ -11,12 +11,14 @@
  * (`resolvePromptTemplate`)と分離器は本物を使う。テスト時の言語は ja(`src/__tests__/setup.ts`)。
  *
  * Requirements: 1.1, 1.5, 4.2, 4.3, 4.4, 4.9
+ * (`template-settings-ui` spec task 3.2: 3.3, 3.4。画面から選んだ指定が、開き直さずに効く)
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EditorView, runScopeHandlers } from "@codemirror/view";
 
 import i18n from "@/i18n";
 import {
+  renderPromptTemplate,
   resolvePromptTemplate,
   type AIConfig,
   type AIProvider,
@@ -67,6 +69,12 @@ vi.mock("@/components/ui/Toast", () => ({
 
 vi.mock("@/domain/memo/memoApi", () => ({
   appendToMemo: mocks.appendToMemo,
+}));
+
+// 画面から選んだ指定の反映(template-settings-ui 3.3, 3.4)で、本物の AI 設定のストアに
+// 保存させる。`sumire.json` への書き込みだけを差し替える。
+vi.mock("@/domain/project/projectApi", () => ({
+  saveProjectMeta: vi.fn().mockResolvedValue(undefined),
 }));
 
 // ---------------------------------------------------------------------------
@@ -458,5 +466,114 @@ describe("テンプレートありの応答の扱い(prompt-template 1.5)", () =
       streaming: false,
       thinkingStartedAt: null,
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 画面から選んだ指定の反映(template-settings-ui 3.3, 3.4)
+// ---------------------------------------------------------------------------
+
+describe("画面から選んだ指定の反映(template-settings-ui 3.3, 3.4)", () => {
+  type RealAIConfigStore = typeof import("@/stores/aiConfigStore");
+  let realStore: RealAIConfigStore["useAIConfigStore"];
+
+  beforeEach(async () => {
+    // このファイルでは AI 設定のストアを差し替えているので、本物を別に読み込む。
+    // 提案コントローラには、本物のストアの「現在使うプロバイダ」の設定を、要求のたびに読ませる。
+    const actual = await vi.importActual<RealAIConfigStore>("@/stores/aiConfigStore");
+    const { useAppStore } = await import("@/stores/appStore");
+    const { DEFAULT_AI_CONFIG_BUNDLE } = await import("@/domain/providers/types");
+    realStore = actual.useAIConfigStore;
+    useAppStore.setState({ currentProject: { path: "/proj", title: "test" } });
+    realStore
+      .getState()
+      .loadFromMeta({ aiConfig: structuredClone(DEFAULT_AI_CONFIG_BUNDLE) } as never);
+    mocks.getActiveConfig.mockImplementation(() => realStore.getState().getActiveConfig());
+  });
+
+  /** 保存先は「現在使うプロバイダ」のセクション(提案はそのセクションを読む) */
+  async function choose(template: unknown): Promise<void> {
+    const active = realStore.getState().bundle?.activeProvider;
+    if (active == null) throw new Error("bundle is null");
+    const ok = await realStore.getState().saveTemplateSelection(active, { template });
+    expect(ok).toBe(true);
+  }
+
+  /** エディタを取り付けて提案を要求し、最初のチャンクを待つところまで進める */
+  async function request(): Promise<ControlledStream> {
+    const stream = createControlledStream();
+    mocks.getProvider.mockReturnValue(stream.provider);
+    const { view } = mountSuggestionEditor({ doc: "あいう" });
+    expect(pressKey(view, "Enter", { shiftKey: true })).toBe(true);
+    await waitUntil(stream.isWaiting, "最初のチャンクを待つところまで");
+    return stream;
+  }
+
+  it("gemma4 を選んだあと、開き直さずに要求すると、Gemma 4 の形で送られる(3.3)", async () => {
+    const before = await request();
+    expect(before.requests[0].promptTemplate).toBeUndefined();
+    await before.send("続き。", "stop");
+    await before.end();
+
+    await choose({ preset: "gemma4" });
+    const after = await request();
+    const template = after.requests[0].promptTemplate;
+    expect(template).toEqual(parsedTemplate({ preset: "gemma4" }));
+    expect(
+      renderPromptTemplate(template as ParsedPromptTemplate, {
+        system: "S",
+        settings: "T",
+        body: "B",
+      }).startsWith("<|turn>system\nS"),
+    ).toBe(true);
+    expect(mocks.toastError).not.toHaveBeenCalled();
+  });
+
+  it("生成中に指定を変えても、その要求は変わらず、次の要求から新しい指定になる(3.4)", async () => {
+    await choose({ preset: "gemma4" });
+
+    // コンテキストの組み立てを止めておき、その間に指定を変える
+    let releaseBuild: (() => void) | undefined;
+    mocks.buildGenerationRequest.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          releaseBuild = () =>
+            resolve({
+              systemPrompt: "system",
+              contextSections: [],
+              body: "本文",
+              usedTokens: { system: 0, sections: 0, body: 0, template: 0, reserved: 0, window: 0 },
+            });
+        }),
+    );
+    const first = createControlledStream();
+    mocks.getProvider.mockReturnValue(first.provider);
+    const { view } = mountSuggestionEditor({ doc: "あいう" });
+    expect(pressKey(view, "Enter", { shiftKey: true })).toBe(true);
+    await waitUntil(() => releaseBuild !== undefined, "コンテキストの組み立てが始まるまで");
+
+    await choose({ preset: "chatml" });
+    releaseBuild?.();
+    await waitUntil(first.isWaiting, "最初のチャンクを待つところまで");
+    expect(lastBuildTemplateArg()).toEqual(parsedTemplate({ preset: "gemma4" }));
+    expect(first.requests[0].promptTemplate).toEqual(parsedTemplate({ preset: "gemma4" }));
+    await first.send("続き。", "stop");
+    await first.end();
+
+    const second = await request();
+    expect(second.requests[0].promptTemplate).toEqual(parsedTemplate({ preset: "chatml" }));
+  });
+
+  it("「指定なし」に戻すと、テンプレートなし(素の連結)で送られる", async () => {
+    await choose({ preset: "gemma4" });
+    const withTemplate = await request();
+    expect(withTemplate.requests[0].promptTemplate).toBeDefined();
+    await withTemplate.send("続き。", "stop");
+    await withTemplate.end();
+
+    await choose(undefined);
+    const plain = await request();
+    expect(plain.requests[0].promptTemplate).toBeUndefined();
+    expect(lastBuildTemplateArg()).toBeUndefined();
   });
 });

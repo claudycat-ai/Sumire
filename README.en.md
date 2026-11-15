@@ -76,28 +76,15 @@ Labels below are those of the English UI.
    - **Models folder**: the folder that holds your gguf files
    - **Context size**: one value for each model in the list. Choose a value that fits in your GPU memory. A value that is too large does not fail to load; generation just gets slow.
 4. Click `○` at the left end of the same row to make this the active provider (`●`). Expand the row with `▸` and click the model to use.
-5. Specify a prompt template (see "Specifying a prompt template" below).
+5. In the same AI settings, choose the template that matches your model under "Prompt template" (see "Choosing a prompt template" below).
 6. Open the chapter, write a few lines, and press `Shift+Enter`. **The first press only loads the model**; no suggestion appears. When the "is ready" toast appears, press `Shift+Enter` again.
 7. The suggestion appears in a faint color. Accept it with `Tab` or dismiss it with `Esc`.
 
-### Specifying a prompt template
+### Choosing a prompt template
 
-Some instruction-tuned models (Gemma, ChatML-style models, and so on) produce broken output unless a template is specified. Gemma 4 did continue a short text without one, but Sumire is meant to be used with the template that matches your model. There is no UI for this setting; edit `sumire.json` in the project folder directly.
+Some instruction-tuned models (Gemma, ChatML-style models, and so on) produce broken output unless a template is specified. Gemma 4 did continue a short text without one, but Sumire is meant to be used with the template that matches your model.
 
-1. Close the project with "Close Project" in the header.
-2. Open `sumire.json` in a text editor and add `template` under `aiConfig` → `providers` → `llama-server`.
-
-   ```json
-   "llama-server": {
-     "provider": "llama-server",
-     "…": "(leave the other fields as they are)",
-     "template": { "preset": "gemma4" }
-   }
-   ```
-
-3. Reopen the project. `sumire.json` is read only when a project is opened.
-
-Four presets are available.
+Choose it under "Prompt template" in the AI settings. The choice is saved as soon as you make it and takes effect from the next suggestion, without reopening the project. New projects start with "None" (no template; the content is joined as-is and sent).
 
 | Name | For | Thinking |
 | --- | --- | --- |
@@ -106,20 +93,12 @@ Four presets are available.
 | `chatml` | ChatML-format models | Left to the model |
 | `chatml-nothink` | ChatML-format models | Suppressed |
 
-When you use `gemma4-think`, also edit `thinking` so that the thinking is separated from the body text, and raise "Max Tokens" in the AI settings. That value includes the tokens spent on thinking, so the default of 200 cuts off in the middle of the thinking. A request times out after 60 seconds; if generation takes longer, raise `timeoutMs` (default 60000) in the same section of `sumire.json` to around 120000.
+When you choose `gemma4-think`, Sumire adds the tags that separate thinking from the text (`<|channel>` and `<channel|>`) to `thinking` in `sumire.json`. It does not change any other setting, so adjust these two yourself:
 
-```json
-"template": { "preset": "gemma4-think" },
-"thinking": {
-  "enabled": true,
-  "tags": [
-    { "open": "<|channel>", "close": "<channel|>" },
-    { "open": "<think>", "close": "</think>" }
-  ]
-}
-```
+- **Max Tokens**: this value includes the tokens spent on thinking, so the default of 200 cuts off in the middle of the thinking. When it is below 1000, a hint appears in the settings. Raise it to around 1,800.
+- **Timeout**: a request times out after 60 seconds. If generation takes longer, raise `timeoutMs` (default 60000) in the same section of `sumire.json` to around 120000. Before editing `sumire.json`, close the project with "Close Project" in the header, and reopen it after editing (`sumire.json` is read only when a project is opened).
 
-For formats not covered by the presets, write your own under `custom`. See "プロンプトテンプレート" in [`docs/spec/architecture.md`](docs/spec/architecture.md) (Japanese).
+For formats not covered by the presets, write your own under `custom` in `template` under `aiConfig` → `providers` → `llama-server` in `sumire.json` (close the project before editing, as above). See "プロンプトテンプレート" in [`docs/spec/architecture.md`](docs/spec/architecture.md) (Japanese). When a custom template is written, the settings show "Custom (sumire.json)". Choosing a preset there replaces it after a confirmation.
 
 ### Key bindings
 
@@ -137,7 +116,7 @@ Character and worldbuilding files are sent to the model with each request only w
 
 ### If you already run an inference server
 
-If you start an inference server with an OpenAI-compatible API (`/v1/completions`) yourself, such as text-generation-webui, use "OpenAI Compatible" in "LLM Switcher". In the AI settings, set Endpoint, Model, and Context Window to match your server. The defaults are `http://127.0.0.1:5000/v1` and a context window of 2048, which will often not match. Specify the template in the same way, under `openai-compatible` in `sumire.json`.
+If you start an inference server with an OpenAI-compatible API (`/v1/completions`) yourself, such as text-generation-webui, use "OpenAI Compatible" in "LLM Switcher". In the AI settings, set Endpoint, Model, and Context Window to match your server. The defaults are `http://127.0.0.1:5000/v1` and a context window of 2048, which will often not match. Choose the prompt template in the same AI settings.
 
 The author has verified Sumire with `llama-server` and text-generation-webui.
 
@@ -146,7 +125,7 @@ The author has verified Sumire with `llama-server` and text-generation-webui.
 | Symptom | What to check |
 | --- | --- |
 | "Failed to load the model" appears | "Server output" in the AI settings. Whether the context size is too large for your GPU memory |
-| Suggestions are broken, or contain instruction-like text | The `template` setting. Whether you reopened the project after editing |
+| Suggestions are broken, or contain instruction-like text | Whether "Prompt template" in the AI settings matches your model |
 | Suggestions are empty, or end with thinking only | Raise "Max Tokens" |
 | A timeout error appears (shown in Japanese: 「応答がタイムアウトしました」) | Raise `timeoutMs` in `sumire.json` |
 | An error says the API key cannot be sent to this endpoint (OpenAI; shown in Japanese: 「この接続先には API キーを送れません」) | Set Endpoint back to `https://api.openai.com/v1`. The API key is sent only to that host |

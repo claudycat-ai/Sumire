@@ -130,6 +130,9 @@ MVP 完成直後は、磨き込みより**Sumire の差別化軸を強化する�
 - [ ] **`buildEditorExtensions` のコメントに撤去済みのキーが残っている**(触発元: illustration-prompt spec のタスク 3.3 のレビュー 2026-11-05)
   `src/editor/setup.ts` の `buildEditorExtensions` の doc コメントが、提案 UX のキーとして M8 で撤去した「Alt+]/[」を挙げている。今のキー(Shift+Enter / Tab / Esc / Alt+M、挿し絵の Alt+I)に直す。
 
+- [ ] **スナップショットの復元の確認ダイアログを、汎用の確認ダイアログに寄せる**(触発元: template-settings-ui spec の設計 2026-11-16)
+  プロンプトテンプレートの欄のために、汎用の確認ダイアログ(`src/components/ui/ConfirmDialog.tsx`。題・本文・続行の文言を受け取り、`Esc` で取りやめる)を足した。スナップショットの復元の確認(`src/components/snapshot/ConfirmRestoreDialog.tsx`)は見た目が同じで、`Esc` に反応しない。復元の確認は本文に `Ctrl+S` のキー表示を含むので、汎用の部品に本文の差し込み(`ReactNode`)を足してから寄せる。スナップショットの機能に触れる変更なので、template-settings-ui spec の範囲から外した。
+
 ### 未着手 + 要 UI 検討
 
 優先度は決めかねているが、課題としては存在することを忘れないために残す項目。

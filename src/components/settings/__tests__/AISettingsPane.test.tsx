@@ -52,7 +52,11 @@ import { toastError, toastInfo } from "@/components/ui/Toast";
 import { emitDevEvent } from "@/lib/devLog";
 import { useAppStore } from "@/stores/appStore";
 import { useAIConfigStore } from "@/stores/aiConfigStore";
-import { DEFAULT_AI_CONFIG_BUNDLE } from "@/domain/providers/types";
+import {
+  DEFAULT_AI_CONFIG_BUNDLE,
+  type AIConfig,
+  type ProviderId,
+} from "@/domain/providers/types";
 import type { SumireProjectMeta } from "@/domain/project/types";
 import { SecretStore } from "@/domain/secrets";
 import { saveProjectMeta } from "@/domain/project/projectApi";
@@ -492,5 +496,185 @@ describe("AISettingsPane llama-server の画面(llama-server-provider 4.4)", () 
     expect(Object.keys(patch)).not.toContain("model");
     expect(Object.keys(patch)).not.toContain("contextWindow");
     expect(writeAppPreferences).not.toHaveBeenCalled();
+  });
+});
+
+// `template-settings-ui` spec task 3.1: プロンプトテンプレートの欄の出し分けと、
+// フォームの自動保存との関係。Requirements: 1.1, 1.2, 2.6, 4.1, 6.4。
+describe("AISettingsPane プロンプトテンプレートの欄(template-settings-ui)", () => {
+  const TEMPLATE_LABEL = "プロンプトテンプレート";
+  const MAX_TOKENS_HINT = /思考の分も Max Tokens に含まれます/;
+
+  function loadSections(
+    sections: Partial<Record<ProviderId, Record<string, unknown>>>,
+  ): void {
+    const bundle = structuredClone(DEFAULT_AI_CONFIG_BUNDLE);
+    for (const [id, extra] of Object.entries(sections)) {
+      Object.assign(bundle.providers[id as ProviderId], extra);
+    }
+    useAIConfigStore
+      .getState()
+      .loadFromMeta({ aiConfig: bundle } as unknown as SumireProjectMeta);
+  }
+
+  function storedSection(id: ProviderId): AIConfig {
+    const bundle = useAIConfigStore.getState().bundle;
+    if (bundle == null) throw new Error("bundle is null");
+    return bundle.providers[id];
+  }
+
+  function templateSelect(): HTMLSelectElement {
+    return screen.getByLabelText(TEMPLATE_LABEL) as HTMLSelectElement;
+  }
+
+  async function renderPane() {
+    render(<AISettingsPane projectPath="/proj" />);
+    await act(async () => {});
+  }
+
+  beforeEach(() => {
+    vi.mocked(saveProjectMeta).mockReset();
+    vi.mocked(saveProjectMeta).mockResolvedValue(undefined);
+    useLlamaServerStore.setState(useLlamaServerStore.getInitialState(), true);
+  });
+
+  it("OpenAI 互換では、モデルの欄の後、生成パラメータの前に欄が出る", async () => {
+    await renderPane();
+    const field = templateSelect();
+    const model = screen.getByLabelText("モデル");
+    const temperature = screen.getByLabelText("Temperature");
+    expect(
+      model.compareDocumentPosition(field) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      field.compareDocumentPosition(temperature) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("llama.cpp では、llama-server の欄の後に欄が出る", async () => {
+    useAppStore.setState({ selectedAIProvider: "llama-server" });
+    await renderPane();
+    const field = templateSelect();
+    const serverLog = screen.getByLabelText("サーバーの出力");
+    expect(
+      serverLog.compareDocumentPosition(field) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("OpenAI(クラウド)では、欄を出さない", async () => {
+    useAppStore.setState({ selectedAIProvider: "openai" });
+    const hasSecretSpy = vi
+      .spyOn(SecretStore, "hasSecret")
+      .mockResolvedValue(false);
+    await renderPane();
+    expect(screen.queryByLabelText(TEMPLATE_LABEL)).toBeNull();
+    hasSecretSpy.mockRestore();
+  });
+
+  it("プロバイダを切り替えると、それぞれの指定が出る", async () => {
+    loadSections({
+      "openai-compatible": { template: { preset: "chatml" } },
+      "llama-server": { template: { preset: "gemma4-think" } },
+    });
+    await renderPane();
+    expect(templateSelect().value).toBe("chatml");
+
+    await act(async () => {
+      useAppStore.setState({ selectedAIProvider: "llama-server" });
+    });
+    expect(templateSelect().value).toBe("gemma4-think");
+
+    await act(async () => {
+      useAppStore.setState({ selectedAIProvider: "openai-compatible" });
+    });
+    expect(templateSelect().value).toBe("chatml");
+  });
+
+  it("自由記述の指定があるとき、Max Tokens を変えて自動保存しても、指定が残る(4.1)", async () => {
+    const custom = { custom: ["<s>{{system}}", "{{body}}"] };
+    loadSections({ "openai-compatible": { template: custom } });
+    vi.useFakeTimers();
+    await renderPane();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Max Tokens"), {
+        target: { value: "1500" },
+      });
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000);
+    });
+
+    expect(saveProjectMeta).toHaveBeenCalledTimes(1);
+    expect(storedSection("openai-compatible").parameters.maxTokens).toBe(1500);
+    expect(storedSection("openai-compatible").template).toEqual(custom);
+    expect(templateSelect().value).toBe("custom");
+  });
+
+  it("Max Tokens の欄を書き換えると、案内の表示が切り替わる(6.4)", async () => {
+    loadSections({
+      "openai-compatible": {
+        template: { preset: "gemma4-think" },
+        parameters: { temperature: 0.8, topP: 0.9, maxTokens: 200 },
+      },
+    });
+    await renderPane();
+    expect(screen.getByText(MAX_TOKENS_HINT)).toBeTruthy();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Max Tokens"), {
+        target: { value: "2000" },
+      });
+    });
+    expect(screen.queryByText(MAX_TOKENS_HINT)).toBeNull();
+  });
+
+  it("Max Tokens を書き換えた直後(自動保存の前)にテンプレートを選んでも、書き換えた値が残り、保存もされる", async () => {
+    await renderPane();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Max Tokens"), {
+        target: { value: "2000" },
+      });
+    });
+    await act(async () => {
+      fireEvent.change(templateSelect(), { target: { value: "gemma4-think" } });
+    });
+
+    const maxTokens = screen.getByLabelText("Max Tokens") as HTMLInputElement;
+    expect(maxTokens.value).toBe("2000");
+    expect(storedSection("openai-compatible").parameters.maxTokens).toBe(2000);
+    expect(storedSection("openai-compatible").template).toEqual({
+      preset: "gemma4-think",
+    });
+    // 先にフォームの入力、次にテンプレートの順で書き込む
+    expect(saveProjectMeta).toHaveBeenCalledTimes(2);
+    const [, lastMeta] = vi.mocked(saveProjectMeta).mock.calls[1];
+    const lastSection = (
+      lastMeta.aiConfig as unknown as { providers: Record<ProviderId, AIConfig> }
+    ).providers["openai-compatible"];
+    expect(lastSection.parameters.maxTokens).toBe(2000);
+    expect(lastSection.template).toEqual({ preset: "gemma4-think" });
+  });
+
+  it("書き込みが失敗してテンプレートを戻したときも、書き換えた Max Tokens は残る", async () => {
+    vi.mocked(saveProjectMeta).mockRejectedValue(new Error("disk full"));
+    await renderPane();
+
+    await act(async () => {
+      fireEvent.change(screen.getByLabelText("Max Tokens"), {
+        target: { value: "2000" },
+      });
+    });
+    await act(async () => {
+      fireEvent.change(templateSelect(), { target: { value: "gemma4" } });
+    });
+
+    expect(templateSelect().value).toBe("none");
+    expect(storedSection("openai-compatible").template).toBeUndefined();
+    const maxTokens = screen.getByLabelText("Max Tokens") as HTMLInputElement;
+    expect(maxTokens.value).toBe("2000");
   });
 });

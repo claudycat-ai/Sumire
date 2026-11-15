@@ -49,6 +49,16 @@ interface AIConfigState {
     patch: Partial<AIConfig>,
   ) => Promise<void>;
   /**
+   * テンプレートの指定(と、渡されたときだけ思考の分離の設定)を置き換えて保存し、
+   * 成否を返す(`template-settings-ui` spec)。失敗したら、そのセクションの
+   * `template` と `thinking` だけを呼ぶ前の値に戻す。プロジェクトを開いていない
+   * ときは、ストアを書き換えずに `false` を返す。
+   */
+  saveTemplateSelection: (
+    id: ProviderId,
+    patch: TemplateSelectionPatch,
+  ) => Promise<boolean>;
+  /**
    * 各プロバイダの API キーが OS keychain に存在するかのキャッシュ。
    * - `null`: 未取得(初回 refresh 前)
    * - `true`: キー設定済み(`SecretStore.hasSecret` が `true` を返した最新値)
@@ -70,6 +80,14 @@ interface AIConfigState {
   clear: () => void;
 }
 
+/** `saveTemplateSelection` に渡す値。 */
+export interface TemplateSelectionPatch {
+  /** `undefined` は「指定なし」(保存するとキーが無くなる)。 */
+  template: unknown;
+  /** 省くと、思考の分離の設定を書き換えない。 */
+  thinking?: ThinkingConfig;
+}
+
 /**
  * `bundle` から「現在使うプロバイダ」の `AIConfig` を派生させる。
  *
@@ -85,8 +103,9 @@ function deriveConfig(bundle: AIConfigBundle | null): AIConfig | null {
  * - `currentProject.path` が無いとき(プロジェクト未オープン状態での誤呼び出し)は
  *   DEV ビルドでのみ警告ログを出して no-op 終了する。
  * - 書き込み失敗は toast で通知(本文編集を阻害しないため throw しない)。
+ * - 成否を返す。保存先が無くて保存しなかったときも `false`。
  */
-async function persistMeta(meta: SumireProjectMeta): Promise<void> {
+async function persistMeta(meta: SumireProjectMeta): Promise<boolean> {
   const projectPath = useAppStore.getState().currentProject?.path;
   if (!projectPath) {
     if (import.meta.env.DEV) {
@@ -95,15 +114,62 @@ async function persistMeta(meta: SumireProjectMeta): Promise<void> {
         "[aiConfigStore] persistMeta: no currentProject.path, skipping save",
       );
     }
-    return;
+    return false;
   }
   try {
     await saveProjectMeta(projectPath, meta);
+    return true;
   } catch (e) {
     toastError(
       i18next.t("toast.aiConfigSaveFailed", { message: String(e) }),
     );
+    return false;
   }
+}
+
+/**
+ * `bundle` の 1 つのセクションを置き換えたバンドルと meta を作る。
+ * セクションは新しいオブジェクトになる(registry の WeakMap キャッシュを意図的にミスさせる)。
+ */
+function withSection(
+  bundle: AIConfigBundle,
+  currentMeta: SumireProjectMeta | null,
+  id: ProviderId,
+  section: AIConfig,
+): { bundle: AIConfigBundle; currentMeta: SumireProjectMeta } {
+  const newBundle: AIConfigBundle = {
+    ...bundle,
+    providers: { ...bundle.providers, [id]: section },
+  };
+  const newMeta: SumireProjectMeta = currentMeta
+    ? { ...currentMeta, aiConfig: newBundle }
+    : ({ aiConfig: newBundle } as SumireProjectMeta);
+  return { bundle: newBundle, currentMeta: newMeta };
+}
+
+/**
+ * セクションの `template` と `thinking` を、`source` の値に揃えた写しを返す。
+ * `source` に無いキーは、写しからも消す(保存したときにキーごと無くなるように)。
+ */
+function withTemplateFields(
+  section: AIConfig,
+  source: Pick<AIConfig, "template" | "thinking">,
+  replaceThinking: boolean,
+): AIConfig {
+  const next: AIConfig = { ...section };
+  if (source.template === undefined) {
+    delete next.template;
+  } else {
+    next.template = source.template;
+  }
+  if (replaceThinking) {
+    if (source.thinking === undefined) {
+      delete next.thinking;
+    } else {
+      next.thinking = source.thinking;
+    }
+  }
+  return next;
 }
 
 export const useAIConfigStore = create<AIConfigState>((set, get) => ({
@@ -165,6 +231,43 @@ export const useAIConfigStore = create<AIConfigState>((set, get) => ({
       currentMeta: newMeta,
     });
     await persistMeta(newMeta);
+  },
+
+  saveTemplateSelection: async (id, patch) => {
+    const state = get();
+    if (!state.bundle) return false;
+    if (!useAppStore.getState().currentProject?.path) return false;
+
+    const before = state.bundle.providers[id];
+    const previous = { template: before.template, thinking: before.thinking };
+    const replaceThinking = patch.thinking !== undefined;
+    const next = withSection(
+      state.bundle,
+      state.currentMeta,
+      id,
+      withTemplateFields(before, patch, replaceThinking),
+    );
+    set(next);
+    const ok = await persistMeta(next.currentMeta);
+    if (ok) return true;
+
+    // 失敗したら、その間に書かれたほかの項目を残して、template と thinking だけを戻す
+    const latest = get();
+    if (latest.bundle) {
+      set(
+        withSection(
+          latest.bundle,
+          latest.currentMeta,
+          id,
+          withTemplateFields(
+            latest.bundle.providers[id],
+            previous,
+            replaceThinking,
+          ),
+        ),
+      );
+    }
+    return false;
   },
 
   refreshSecretAvailability: async (id) => {

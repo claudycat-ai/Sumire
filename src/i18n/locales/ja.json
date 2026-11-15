@@ -126,7 +126,34 @@
     "connectionStatusTesting": "テスト中…",
     "connectionStatusOk": "OK",
     "connectionStatusFailed": "失敗",
-    "connectionTestNoConfig": "プロバイダ設定が読み込まれていません"
+    "connectionTestNoConfig": "プロバイダ設定が読み込まれていません",
+    "template": "プロンプトテンプレート",
+    "templateHelp": "指定なしのときは、システムプロンプト・設定情報・本文をそのまま連結して送ります。指示に答える形で学習されたモデル(instruct・it・chat などの版)では、モデルの書式に合うテンプレートを選んでください。選んだ指定は次の提案から効きます。",
+    "templateOption": {
+      "none": "指定なし(素の連結)",
+      "gemma4": "gemma4(Gemma 4・思考なし)",
+      "gemma4-think": "gemma4-think(Gemma 4・思考あり)",
+      "chatml": "chatml(ChatML)",
+      "chatml-nothink": "chatml-nothink(ChatML・思考なし)",
+      "custom": "自由記述(sumire.json)",
+      "unreadable": "読めない指定"
+    },
+    "templateDesc": {
+      "none": "テンプレートを使わず、内容をそのまま連結して送ります。素の続き書きをするモデル(ベースモデルなど)向けです。",
+      "gemma4": "Gemma 4 の会話の書式です。思考はさせず、本文の続きをモデルの番に直接書かせます。",
+      "gemma4-think": "Gemma 4 の会話の書式で、モデルに思考させてから続きを書かせます。思考の分は本文と分けて扱います。",
+      "chatml": "ChatML(<|im_start|> で区切る書式)です。思考を止める指示は入れません。",
+      "chatml-nothink": "ChatML の書式で、空の思考を先に置いて、思考させずに続きを書かせます。"
+    },
+    "templateCustomNote": "sumire.json に自由記述のテンプレートが書かれています。中身は sumire.json で直してください。ここで選び直すと、自由記述は置き換わります。",
+    "templateCustomInvalidNote": "sumire.json の自由記述のテンプレートに不備があり、このままでは提案が生成されません。sumire.json で直すか、ここで選び直してください。",
+    "templateUnreadableNote": "sumire.json のテンプレートの指定を読めません。このままでは提案が生成されません。sumire.json で直すか、ここで選び直してください。",
+    "templateTagsAdded": "思考を本文と分けるためのタグ(<|channel> と <channel|>)を、思考の分離の設定に足しました。",
+    "templateThinkingDisabled": "思考の分離が無効にされているため、思考の文が提案に混ざります。sumire.json の thinking で有効にしてください。",
+    "templateMaxTokensHint": "思考の分も Max Tokens に含まれます。思考の途中で切れて提案が空になることがあるので、{{min}} 以上に上げることをお勧めします。",
+    "templateConfirmTitle": "テンプレートの指定を置き換えますか?",
+    "templateConfirmBody": "sumire.json に書かれているいまのテンプレートの記述は、選んだ指定に置き換わります。元に戻すには sumire.json を直す必要があります。",
+    "templateConfirmAction": "置き換える"
   },
   "llamaServer": {
     "stateStopped": "停止中",

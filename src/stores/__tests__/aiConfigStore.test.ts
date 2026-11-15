@@ -1057,3 +1057,166 @@ describe("isLocalCompletionProvider(llama-server-provider 1.4)", () => {
     expect(isLocalCompletionProvider("claude")).toBe(false);
   });
 });
+
+// `template-settings-ui` spec task 1.2: テンプレートと思考の分離の設定を、成否つきで保存する。
+// Requirements: 3.1, 3.5, 7.4。
+
+describe("saveTemplateSelection(template-settings-ui 3.1, 3.5, 7.4)", () => {
+  const GEMMA4_TAGS = { open: "<|channel>", close: "<channel|>" };
+  const THINK_TAGS = { open: "<think>", close: "</think>" };
+  const ILLUSTRATION = { template: { preset: "chatml" }, maxTokens: 4096 };
+
+  function loadLocal(extra: Record<string, unknown>): void {
+    useAIConfigStore
+      .getState()
+      .loadFromMeta(
+        metaWithSections(
+          { ...LOCAL_SECTION, ...extra },
+          { ...CLOUD_SECTION, template: { preset: "gemma4" } },
+        ),
+      );
+  }
+
+  function localSection(): AIConfig {
+    const bundle = useAIConfigStore.getState().bundle;
+    if (bundle == null) throw new Error("bundle is null");
+    return bundle.providers["openai-compatible"];
+  }
+
+  it("成功すると template と thinking がストアと保存内容に入り、true を返す", async () => {
+    loadLocal({ thinking: { enabled: true, tags: [THINK_TAGS] } });
+    const thinking = { enabled: true, tags: [THINK_TAGS, GEMMA4_TAGS] };
+
+    const ok = await useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", {
+        template: { preset: "gemma4-think" },
+        thinking,
+      });
+
+    expect(ok).toBe(true);
+    expect(localSection().template).toEqual({ preset: "gemma4-think" });
+    expect(localSection().thinking).toEqual(thinking);
+    expect(mockSaveProjectMeta).toHaveBeenCalledTimes(1);
+    const providers = persistedProviders();
+    expect(providers["openai-compatible"].template).toEqual({
+      preset: "gemma4-think",
+    });
+    expect(providers["openai-compatible"].thinking).toEqual(thinking);
+    // ほかのプロバイダのセクションは変わらない
+    expect(providers.openai.template).toEqual({ preset: "gemma4" });
+  });
+
+  it("thinking を省くと、思考の分離の設定は変わらない", async () => {
+    const before = { enabled: false, tags: [THINK_TAGS] };
+    loadLocal({ thinking: before });
+
+    await useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", {
+        template: { preset: "chatml" },
+      });
+
+    expect(localSection().thinking).toEqual(before);
+    expect(persistedProviders()["openai-compatible"].thinking).toEqual(before);
+  });
+
+  it("template に undefined を渡すと、保存内容から template のキーが無くなる", async () => {
+    loadLocal({ template: { preset: "gemma4" } });
+
+    const ok = await useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", { template: undefined });
+
+    expect(ok).toBe(true);
+    expect(localSection().template).toBeUndefined();
+    expect(persistedProviders()["openai-compatible"]).not.toHaveProperty(
+      "template",
+    );
+  });
+
+  it("挿し絵用の設定は書き換えない", async () => {
+    loadLocal({ illustration: ILLUSTRATION });
+
+    await useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", {
+        template: { preset: "gemma4-think" },
+        thinking: { tags: [THINK_TAGS, GEMMA4_TAGS] },
+      });
+
+    expect(localSection().illustration).toEqual(ILLUSTRATION);
+    expect(persistedProviders()["openai-compatible"].illustration).toEqual(
+      ILLUSTRATION,
+    );
+  });
+
+  it("保存が失敗すると false を返し、template と thinking だけが元に戻る", async () => {
+    const custom = { custom: "{{system}}{{body}}" };
+    const thinking = { enabled: true, tags: [THINK_TAGS] };
+    loadLocal({ template: custom, thinking });
+
+    let release: (() => void) | undefined;
+    mockSaveProjectMeta.mockImplementationOnce(
+      () =>
+        new Promise<void>((_, reject) => {
+          release = () => reject(new Error("disk full"));
+        }),
+    );
+
+    const pending = useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", {
+        template: { preset: "gemma4-think" },
+        thinking: { enabled: true, tags: [THINK_TAGS, GEMMA4_TAGS] },
+      });
+    // 保存を待っている間に、自動保存がほかの項目を書く
+    await useAIConfigStore
+      .getState()
+      .updateProviderSection("openai-compatible", {
+        parameters: { temperature: 0.5, topP: 0.9, maxTokens: 2000 },
+      });
+    release?.();
+    const ok = await pending;
+
+    expect(ok).toBe(false);
+    const section = localSection();
+    expect(section.template).toEqual(custom);
+    expect(section.thinking).toEqual(thinking);
+    expect(section.parameters.maxTokens).toBe(2000);
+    expect(
+      useAIConfigStore.getState().bundle?.providers.openai.template,
+    ).toEqual({ preset: "gemma4" });
+    // 戻した値は currentMeta にも入る(次の保存で、失敗した値を書かない)
+    const metaSection = (
+      useAIConfigStore.getState().currentMeta?.aiConfig as AIConfigBundleLike
+    ).providers["openai-compatible"];
+    expect(metaSection.template).toEqual(custom);
+  });
+
+  it("プロジェクトを開いていないときは、ストアを書き換えずに false を返す", async () => {
+    loadLocal({ template: { preset: "gemma4" } });
+    useAppStore.setState({ currentProject: null });
+
+    const ok = await useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", {
+        template: { preset: "chatml" },
+      });
+
+    expect(ok).toBe(false);
+    expect(localSection().template).toEqual({ preset: "gemma4" });
+    expect(mockSaveProjectMeta).not.toHaveBeenCalled();
+  });
+
+  it("bundle が無いときは false を返す", async () => {
+    useAIConfigStore.setState({ bundle: null, currentMeta: null });
+    const ok = await useAIConfigStore
+      .getState()
+      .saveTemplateSelection("openai-compatible", { template: undefined });
+    expect(ok).toBe(false);
+    expect(mockSaveProjectMeta).not.toHaveBeenCalled();
+  });
+});
+
+type AIConfigBundleLike = { providers: Record<ProviderId, AIConfig> };
