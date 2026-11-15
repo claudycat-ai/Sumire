@@ -144,6 +144,7 @@ The author has verified Sumire with `llama-server` and text-generation-webui.
 | Suggestions are broken, or contain instruction-like text | The `template` setting. Whether you reopened the project after editing |
 | Suggestions are empty, or end with thinking only | Raise "Max Tokens" |
 | A timeout error appears (shown in Japanese: 「応答がタイムアウトしました」) | Raise `timeoutMs` in `sumire.json` |
+| An error says the API key cannot be sent to this endpoint (OpenAI; shown in Japanese: 「この接続先には API キーを送れません」) | Set Endpoint back to `https://api.openai.com/v1`. The API key is sent only to that host |
 | Suggestions ignore earlier parts of the text | The context size. Text that does not fit is cut from the beginning before it is sent |
 | A connection error appears (OpenAI Compatible; this toast is shown in Japanese: 「推論サーバーに接続できません」) | Whether the inference server is running. The port number in Endpoint |
 

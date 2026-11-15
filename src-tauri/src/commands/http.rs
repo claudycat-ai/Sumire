@@ -80,6 +80,8 @@ pub enum HttpStartError {
     SecretUnavailable(String),
     /// `auth_provider` に対応する認証方式が未定義。
     UnsupportedAuth(String),
+    /// `auth_provider` のキーを送ってよい接続先ではない。文言は接続先のホスト名。
+    AuthHostNotAllowed(String),
     /// 呼び出し側のヘッダー名・値が HTTP ヘッダーとして不正。文言はヘッダー名だけ。
     InvalidHeader(String),
 }
@@ -136,6 +138,28 @@ fn auth_scheme_for(provider: &str) -> Option<AuthScheme> {
     }
 }
 
+/// 送り先の検査の型。`auth_provider` のキーを、その URL に送ってよいかを返す。
+pub(crate) type AuthHostPolicy = fn(&str, &Url) -> bool;
+
+/// `auth_provider` のキーを送ってよい接続先かを返す(本番の検査)。
+///
+/// 接続先(`sumire.json` のエンドポイント)は作品ごとの設定で、他人から受け取った
+/// プロジェクトにも書ける。キーは PC ごとの資格情報ストアにあるので、接続先を
+/// 検査せずに付けると、開いたプロジェクトしだいでキーが第三者のサーバーに渡る。
+/// そこで、キーを付ける相手をプロバイダごとに固定する。
+///
+/// - `openai`: `https://api.openai.com`(既定のポート)だけ。
+fn auth_host_allowed(provider: &str, url: &Url) -> bool {
+    match provider {
+        "openai" => {
+            url.scheme() == "https"
+                && url.host_str() == Some("api.openai.com")
+                && url.port_or_known_default() == Some(443)
+        }
+        _ => false,
+    }
+}
+
 /// URL を解釈し、スキームが http / https であることを確かめる。
 /// 文言には書き手が設定した URL をそのまま入れる(キーは入りえない)。
 fn validate_url(url: &str) -> Result<Url, HttpStartError> {
@@ -150,14 +174,31 @@ fn validate_url(url: &str) -> Result<Url, HttpStartError> {
 ///
 /// 1. URL を解釈し、スキームが http / https であることを確かめる(Req 2.3)。
 /// 2. 呼び出し側の Authorization を大文字小文字を問わず取り除く(Req 7.2)。
-/// 3. `auth_provider` の指定があるときだけ、認証方式を確かめてからキーを読み、
-///    Authorization を付ける。未設定なら送らない(Req 7.4)。指定がなければ
-///    キーは読みに行かない。
+/// 3. `auth_provider` の指定があるときだけ、認証方式と接続先を確かめてからキーを
+///    読み、Authorization を付ける。キーを送ってよい接続先でなければ
+///    `AuthHostNotAllowed`、未設定なら送らない(Req 7.4)。指定がなければキーは
+///    読みに行かない。
 ///
-/// `read_secret` は本番では `secrets::read_secret` を渡す。
+/// `read_secret` は本番では `secrets::read_secret` を渡す。接続先の検査は本番の
+/// `auth_host_allowed` を使う。本番の経路は `start_request` が
+/// `prepare_request_with_policy` を直接呼ぶので、この形はテストだけが使う。
+#[cfg(test)]
 pub(crate) fn prepare_request<F>(
     req: HttpRequest,
     read_secret: F,
+) -> Result<PreparedRequest, HttpStartError>
+where
+    F: FnOnce(&str) -> Result<Option<String>, String>,
+{
+    prepare_request_with_policy(req, read_secret, auth_host_allowed)
+}
+
+/// `prepare_request` の、接続先の検査を差し替えられる形。テストで、ローカルの
+/// テスト用サーバーにキーが届くことを確かめるために使う。
+pub(crate) fn prepare_request_with_policy<F>(
+    req: HttpRequest,
+    read_secret: F,
+    auth_host_policy: AuthHostPolicy,
 ) -> Result<PreparedRequest, HttpStartError>
 where
     F: FnOnce(&str) -> Result<Option<String>, String>,
@@ -171,6 +212,11 @@ where
         // 認証方式を先に確かめ、未知のプロバイダ名で keychain を読みに行かない。
         let scheme = auth_scheme_for(provider)
             .ok_or_else(|| HttpStartError::UnsupportedAuth(provider.to_string()))?;
+        // 接続先を確かめてからキーを読む。送れない接続先では keychain を読みに行かない。
+        if !auth_host_policy(provider, &url) {
+            let host = url.host_str().unwrap_or_default().to_string();
+            return Err(HttpStartError::AuthHostNotAllowed(host));
+        }
         // 移行前の画面側(`if (!apiKey)`)と同じく、空文字も未設定として扱う。
         let key = match read_secret(provider) {
             Ok(Some(key)) if !key.is_empty() => key,
@@ -368,7 +414,24 @@ where
     S: Fn(HttpEvent) -> Result<(), E> + Send + 'static,
     E: Send + 'static,
 {
-    let request = to_reqwest_request(prepare_request(req, read_secret)?)?;
+    start_request_with_policy(req, read_secret, auth_host_allowed, sink, state)
+}
+
+/// `start_request` の、接続先の検査を差し替えられる形(テスト用)。
+pub(crate) fn start_request_with_policy<R, S, E>(
+    req: HttpRequest,
+    read_secret: R,
+    auth_host_policy: AuthHostPolicy,
+    sink: S,
+    state: &HttpState,
+) -> Result<u32, HttpStartError>
+where
+    R: FnOnce(&str) -> Result<Option<String>, String>,
+    S: Fn(HttpEvent) -> Result<(), E> + Send + 'static,
+    E: Send + 'static,
+{
+    let request =
+        to_reqwest_request(prepare_request_with_policy(req, read_secret, auth_host_policy)?)?;
 
     let id = state.next_id.fetch_add(1, Ordering::Relaxed);
     let tasks = Arc::clone(&state.tasks);
@@ -558,6 +621,45 @@ mod tests {
     }
 
     #[test]
+    fn refuses_to_attach_key_to_other_hosts_without_reading_secret() {
+        // 接続先は作品ごとの設定(sumire.json)で、他人のプロジェクトにも書ける。
+        // キーを送ってよいのは https://api.openai.com だけ。
+        let cases = [
+            ("https://evil.example.com/v1/chat/completions", "evil.example.com"),
+            ("http://api.openai.com/v1/chat/completions", "api.openai.com"),
+            ("https://api.openai.com:8443/v1/chat/completions", "api.openai.com"),
+            ("https://api.openai.com.evil.example.com/v1", "api.openai.com.evil.example.com"),
+            ("https://api.openai.com@evil.example.com/v1", "evil.example.com"),
+            ("http://127.0.0.1:5000/v1/chat/completions", "127.0.0.1"),
+        ];
+        for (url, host) in cases {
+            let err = expect_err(request(url, Some("openai")), must_not_read);
+            assert_eq!(
+                err,
+                HttpStartError::AuthHostNotAllowed(host.to_string()),
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
+    fn attaches_key_to_openai_host_in_any_case_and_with_default_port() {
+        for url in [
+            "https://API.OpenAI.com/v1/models",
+            "https://api.openai.com:443/v1/models",
+        ] {
+            let prepared = expect_ok(request(url, Some("openai")), |_| {
+                Ok(Some("test-key-value".to_string()))
+            });
+            assert_eq!(
+                authorization_values(&prepared.headers),
+                vec!["Bearer test-key-value"],
+                "{url}"
+            );
+        }
+    }
+
+    #[test]
     fn does_not_read_secret_without_auth_provider() {
         let prepared = expect_ok(request("http://127.0.0.1:5000/v1", None), must_not_read);
         assert!(authorization_values(&prepared.headers).is_empty());
@@ -636,6 +738,10 @@ mod tests {
                 "unsupportedAuth",
             ),
             (HttpStartError::InvalidHeader("x".into()), "invalidHeader"),
+            (
+                HttpStartError::AuthHostNotAllowed("x".into()),
+                "authHostNotAllowed",
+            ),
         ];
         for (err, kind) in cases {
             assert_eq!(
@@ -1185,6 +1291,7 @@ mod tests {
     fn server_receives_bearer_from_substituted_secret_reader() {
         // キーの読み出しはテスト値を返す関数に差し替え、keychain には触れない。
         // 呼び出し側の Authorization は届かず、付与したものだけが届く(Req 7.2)。
+        // 送り先はローカルのテスト用サーバーなので、接続先の検査は通す形に差し替える。
         let (url, head_rx, server) = serve_once(respond_ok);
 
         let mut req = request(&format!("{url}/v1/chat/completions"), Some("openai"));
@@ -1196,12 +1303,13 @@ mod tests {
         let mut asked = Vec::new();
         let state = HttpState::default();
         let (sink, rx) = collector();
-        start_request(
+        start_request_with_policy(
             req,
             |provider: &str| {
                 asked.push(provider.to_string());
                 Ok(Some("test-key-value".to_string()))
             },
+            |_, _| true,
             sink,
             &state,
         )

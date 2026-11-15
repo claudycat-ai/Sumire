@@ -78,6 +78,7 @@ Sumire が受け持つのは、モデルのファイル・コンテキスト長�
 - **HTTP リクエストは Rust 側が担う**。フロントのアダプタは `nativeFetch`(`src/domain/http/`)を `fetch` と同じ形で呼び、`nativeFetch` が `http_request` を invoke する。Rust 側(`commands/http.rs`、reqwest)が送受信し、応答を Channel でチャンクごとに流す。`nativeFetch` はそれを Web 標準の `Response` に組み立てて返す。Rust 側の責務は「送る・流す・切る・キーを付ける」に絞り、SSE の解釈・ステータスによるエラー分類・タイムアウト判定はフロントのアダプタに残す。理由は次の 2 つ:
   - **推論サーバーのアクセス元制限**: text-generation-webui v4.x などは、既定でアクセスを許す Origin を `localhost` / `127.0.0.1` に絞る。リリースビルドの WebView の Origin は `http://tauri.localhost` なので、WebView の `fetch` は CORS で拒否される(開発ビルドの `http://localhost:1420` は通るため、リリースビルドでだけ「接続できません」になる)。Rust 側の通信は CORS の判定を受けない。
   - **API キーを画面側に渡さない**: キーは Rust 側で OS の資格情報ストアから読み出し、`Authorization` ヘッダーに付けて送る。フロントはリクエストにプロバイダ名(`authProvider`)を指定するだけで、キーの値を取得する command は無い(キーについてフロントが読めるのは、設定済みかどうかを返す `has_secret` だけ。保存・削除は `set_secret` / `delete_secret`)。
+  - **キーを付ける相手を固定する**: 接続先(`sumire.json` のエンドポイント)は作品ごとの設定で、他人から受け取ったプロジェクトにも書ける。キーは PC ごとの資格情報ストアにあるので、接続先を検査せずに付けると、開いたプロジェクトしだいでキーが第三者のサーバーに渡る。そこで Rust 側(`commands/http.rs` の `auth_host_allowed`)が、キーを付ける相手をプロバイダごとに固定する。`openai` は `https://api.openai.com`(既定のポート)だけ。それ以外の接続先では、キーを読まずに開始時エラー(`authHostNotAllowed`)を返し、HTTP は送らない。画面側は「この接続先には API キーを送れません」と伝える。キーを付けないリクエスト(OpenAI 互換と `llama-server`)の接続先は制限しない。
 
   経路のオーバーヘッドは、最初の SSE イベントまでの時間で WebView `fetch` の中央値 4ms に対し 5ms(実測)で、実用上の差はない。
 
@@ -101,7 +102,7 @@ Sumire が受け持つのは、モデルのファイル・コンテキスト長�
 | 推論サーバー・クラウド API への生成リクエスト | Rust (`http_request`、フロントの入口は `nativeFetch`) | HTTP。CORS の判定を受けず、キーを Rust 側で付けるため |
 | 推論サーバーへのトークン数問い合わせ | Rust (同上) | 同上 |
 | 接続テスト・モデル一覧取得 | Rust (同上) | 同上 |
-| API キーの読み出しと `Authorization` ヘッダーの付与 | Rust | キーを画面側に渡さない。キーについてフロントが読めるのは存在確認(`has_secret`)だけ |
+| API キーの読み出しと `Authorization` ヘッダーの付与 | Rust | キーを画面側に渡さない。キーを付ける相手は Rust 側で固定する(`openai` は `https://api.openai.com` だけ)。キーについてフロントが読めるのは存在確認(`has_secret`)だけ |
 | HTTP 応答の解釈(SSE、ステータスによるエラー分類、タイムアウト判定) | フロント(プロバイダアダプタ) | Rust は通信だけを担い、推論 API の意味づけを持たない |
 | `preferences.json`(アプリ側の設定)の読み書き、モデルのフォルダの gguf の一覧 | Rust | ファイル I/O。JSON は文字列のまま受け渡し、解析と書き戻しはフロント(`domain/llamaServer/preferences.ts`)が行う(`recent.json` と同じ形) |
 | `llama-server` の子プロセスの起動・停止・終了の見張り、出力の末尾の保持 | Rust (`commands/llama_server.rs`) | プロセスの終了を検知できるのは Rust 側だけ。状態(停止中・読み込み中・準備完了・失敗)も Rust 側が正で、WebView を読み込み直してもプロセスと食い違わない |

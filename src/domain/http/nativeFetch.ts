@@ -38,6 +38,7 @@ const START_ERROR_KINDS: ReadonlySet<string> = new Set<NativeHttpStartErrorKind>
   "missingSecret",
   "secretUnavailable",
   "unsupportedAuth",
+  "authHostNotAllowed",
   "invalidHeader",
 ]);
 

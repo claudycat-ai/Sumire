@@ -45,6 +45,14 @@ export function toProviderErrorFromStart(
         `この接続先の認証方式に対応していません: ${e.message}`,
         e,
       );
+    case "authHostNotAllowed":
+      // キーを付ける相手は Rust 側で固定している(他人のプロジェクトの設定で、
+      // キーが第三者のサーバーに渡らないようにするため)。
+      return new ProviderError(
+        "config",
+        `この接続先には API キーを送れません: ${e.message}。${context.secretLabel ?? "このプロバイダ"} のエンドポイントを既定の値に戻してください`,
+        e,
+      );
     case "invalidHeader":
       return new ProviderError("config", `リクエストヘッダーが不正です: ${e.message}`, e);
     case "network":

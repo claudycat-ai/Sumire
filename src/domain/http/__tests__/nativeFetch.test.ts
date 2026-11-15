@@ -219,6 +219,7 @@ describe("nativeFetch: エラー変換 (Req 5.2, 2.3, 7.4)", () => {
     "missingSecret",
     "secretUnavailable",
     "unsupportedAuth",
+    "authHostNotAllowed",
     "invalidHeader",
   ])("開始時エラー %s を同じ kind の NativeHttpError で reject する", async (kind) => {
     const p = nativeFetch("http://x/v1", { authProvider: "openai" });

@@ -60,6 +60,18 @@ describe("toProviderErrorFromStart", () => {
     expect(err?.message).toBe("この接続先の認証方式に対応していません: foo");
   });
 
+  it("authHostNotAllowed は config になり、接続先とプロバイダ名を伝える", () => {
+    const err = toProviderErrorFromStart(
+      new NativeHttpError("authHostNotAllowed", "evil.example.com"),
+      { secretLabel: "OpenAI" },
+    );
+
+    expect(err?.kind).toBe("config");
+    expect(err?.message).toBe(
+      "この接続先には API キーを送れません: evil.example.com。OpenAI のエンドポイントを既定の値に戻してください",
+    );
+  });
+
   it("invalidHeader は config になる", () => {
     const err = toProviderErrorFromStart(new NativeHttpError("invalidHeader", "X-Bad"), {});
 

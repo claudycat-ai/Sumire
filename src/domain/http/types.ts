@@ -26,6 +26,7 @@ export type NativeHttpErrorKind =
   | "missingSecret"
   | "secretUnavailable"
   | "unsupportedAuth"
+  | "authHostNotAllowed"
   | "invalidHeader"
   | "network";
 
