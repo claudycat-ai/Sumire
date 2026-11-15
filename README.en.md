@@ -28,15 +28,18 @@ Which category applies depends on **what ends up in the manuscript**, not on how
 The summary below is as of November 2026. Definitions and enforcement change, so read the official pages before you post.
 
 - **Shōsetsuka ni Narō**: Since June 9, 2026, every work must have its "AI usage status" (AI利用状況) set ([guideline](https://syosetu.com/site/ai/)).
-  - Text accepted with `Tab` remains in the body as-is → **Direct use** (直接使用). The keyword "AI直接使用" is shown on the work.
-  - Suggestions served only as drafts or material, and you rewrote all of the body in your own words → **Indirect use** (間接利用).
-  - **Assistive use** (補助的利用) is the category for cases where AI takes no part in writing the body (brainstorming, research, typo checks, and so on). It does not apply if you used Sumire's suggestions in the body.
-  - Works whose body is entirely AI-generated cannot be posted. Setting a status that differs from the facts is also prohibited.
+  - A continuous passage accepted with `Tab` remains in the body as-is → **Direct use** (AI直接使用). The keyword "AI直接使用" is shown on the work. Passages where you only changed a few words still count.
+  - Suggestions served only as drafts or material, and you rewrote the whole in your own words → **Indirect use** (AI間接利用).
+  - **Assistive use** (AI補助的利用) is the category for cases where AI takes no part in writing the body (brainstorming, research, typo checks, and so on). It does not apply if you used Sumire's suggestions in the body.
+  - Works whose body is entirely AI-generated, with no additions or edits by the author, cannot be posted. Setting a status that differs from the facts is also prohibited.
 - **Kakuyomu**: Works that use generative AI are asked to carry one of the recommended tags ([announcement](https://kakuyomu.jp/info/entry/geneai_tag)). Tagging is recommended for ordinary posts and mandatory for Kakuyomu Contest entries.
   - AI-generated text (including lightly edited text) makes up half or more of the body → **AI本文利用**
   - Less than half → **AI本文一部利用**
   - You wrote the body yourself from AI ideas or material, or used AI only for proofreading → **AI補助利用**
-- **Novelup+**: AI-generated work flagging is mandatory (assistive use is explicitly excluded from the "AI work" classification; checked as of May 2026).
+- **Novelup+**: Since October 2026, every work must have its AI usage category set ([guideline](https://novelup.plus/help/detail/AI%E7%94%9F%E6%88%90%E4%BD%9C%E5%93%81%E3%81%AE%E6%8A%95%E7%A8%BF%E3%81%AB%E9%96%A2%E3%81%99%E3%82%8B%E3%82%AC%E3%82%A4%E3%83%89%E3%83%A9%E3%82%A4%E3%83%B3)).
+  - AI-generated text is used as-is in the body, even in part → **AI生成作品** (AI-generated work). Such works are excluded from the support rankings and, as a rule, cannot enter contests. The category cannot be changed to another one after publication.
+  - AI text is not used as-is in the body, and AI was used for brainstorming, typo checks, and so on → **AI補助利用作品** (AI-assisted work).
+  - If text accepted with `Tab` remains in the body, the work is an AI生成作品. The guideline asks you to choose AI生成作品 when in doubt.
 - Contests and newcomer awards may set conditions that differ from the site-wide rules. Check the entry guidelines.
 
 ## Installation Notes
