@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sumire（すみれ）｜続きだけ AI に提案させる、日本語小説の執筆ツール</title>
+<meta name="description" content="Sumire は、日本語 Web 小説を書くためのデスクトップアプリです。書いている本文の続きを AI が薄い色で提案し、Tab で採用、Esc で却下します。ローカル LLM（llama.cpp）とクラウド AI に対応。Windows 向け、無料、オープンソース。">
+<link rel="canonical" href="https://claudycat-ai.github.io/Sumire/">
+<link rel="icon" type="image/png" href="icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Sumire（すみれ）｜続きだけ AI に提案させる、日本語小説の執筆ツール">
+<meta property="og:description" content="書くのは自分。続きだけ AI に出してもらう。ローカル LLM に対応した、日本語 Web 小説のための執筆ツールです。">
+<meta property="og:url" content="https://claudycat-ai.github.io/Sumire/">
+<meta property="og:image" content="https://claudycat-ai.github.io/Sumire/screenshot.png">
+<meta property="og:locale" content="ja_JP">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Sumire",
+  "alternateName": "すみれ",
+  "applicationCategory": "DesktopApplication",
+  "operatingSystem": "Windows",
+  "softwareVersion": "0.2.0",
+  "description": "日本語 Web 小説の執筆を、本文の続きの提案（Tab で採用）で補助するデスクトップアプリ。ローカル LLM（llama.cpp ほか）と OpenAI に対応。",
+  "url": "https://claudycat-ai.github.io/Sumire/",
+  "downloadUrl": "https://github.com/claudycat-ai/Sumire/releases",
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "JPY" },
+  "author": { "@type": "Person", "name": "Claudy Cat", "url": "https://github.com/claudycat-ai" },
+  "sameAs": [
+    "https://github.com/claudycat-ai/Sumire",
+    "https://note.com/claudycat/n/n157df9665e43",
+    "https://claudycat.booth.pm/items/9158205"
+  ]
+}
+</script>
+<style>
+  :root {
+    --bg: #0d0b12;
+    --panel: #17131f;
+    --line: #2a2336;
+    --text: #e8e4ef;
+    --muted: #a59fb3;
+    --accent: #b48cf2;
+    --accent-strong: #9a6be8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", system-ui, sans-serif;
+    line-height: 1.8;
+  }
+  a { color: var(--accent); }
+  main { max-width: 880px; margin: 0 auto; padding: 56px 24px 72px; }
+  header { display: flex; align-items: center; gap: 20px; }
+  header img { width: 72px; height: 72px; }
+  h1 { font-size: 2.2rem; margin: 0; line-height: 1.2; }
+  h1 small { font-size: 1rem; color: var(--muted); font-weight: normal; margin-left: .4em; }
+  .lead { font-size: 1.25rem; margin: 28px 0 8px; }
+  .sub { color: var(--muted); margin: 0 0 28px; }
+  .buttons { display: flex; flex-wrap: wrap; gap: 12px; margin: 0 0 40px; }
+  .buttons a {
+    display: inline-block; padding: 10px 20px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--panel);
+    color: var(--text); text-decoration: none; font-weight: bold;
+  }
+  .buttons a.primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #fff; }
+  .buttons a:hover { border-color: var(--accent); }
+  figure { margin: 0 0 48px; }
+  figure img { width: 100%; height: auto; border: 1px solid var(--line); border-radius: 8px; display: block; }
+  figcaption { color: var(--muted); font-size: .9rem; margin-top: 8px; }
+  h2 { font-size: 1.3rem; border-left: 4px solid var(--accent); padding-left: 12px; margin: 48px 0 16px; }
+  ul { padding-left: 1.3em; }
+  li { margin: 6px 0; }
+  kbd {
+    font-family: ui-monospace, Consolas, monospace; font-size: .9em;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px;
+  }
+  .note { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 20px; }
+  footer { color: var(--muted); font-size: .9rem; border-top: 1px solid var(--line); margin-top: 64px; padding-top: 20px; }
+  footer p { margin: 4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="icon.png" alt="" width="72" height="72">
+    <h1>Sumire<small>すみれ</small></h1>
+  </header>
+
+  <p class="lead">書くのは自分。続きだけ AI に出してもらう、日本語 Web 小説のための執筆ツールです。</p>
+  <p class="sub">Windows（x64）向けのデスクトップアプリ。無料・オープンソース（Apache License 2.0）。最新版は 0.2.0 です。</p>
+
+  <div class="buttons">
+    <a class="primary" href="https://github.com/claudycat-ai/Sumire/releases">ダウンロード（GitHub）</a>
+    <a href="https://claudycat.booth.pm/items/9158205">BOOTH で入手</a>
+    <a href="https://note.com/claudycat/n/n157df9665e43">紹介記事（note）</a>
+    <a href="https://github.com/claudycat-ai/Sumire">ソースコード</a>
+  </div>
+
+  <figure>
+    <img src="screenshot.png" alt="Sumire の画面。本文の続きの提案が、赤い枠の中に薄い色で表示されている" width="1368" height="882">
+    <figcaption>本文の続きの提案が、薄い色で出ます（赤い枠の部分）。</figcaption>
+  </figure>
+
+  <h2>どんな道具か</h2>
+  <ul>
+    <li>書いている本文の続きを、AI が薄い色で<strong>提案</strong>します。<kbd>Tab</kbd> で採用、<kbd>Esc</kbd> で却下。本文を書くのは書き手自身です。</li>
+    <li><strong>ローカル LLM</strong> に対応しています。llama.cpp の <code>llama-server</code> を Sumire から起動して使えるほか、OpenAI 互換の API を持つ推論サーバーや OpenAI にもつなげます。</li>
+    <li>キャラクター、世界観、用語集、プロットの設定ファイルのうち、選んだものだけを、提案のたびに AI へ渡します。</li>
+    <li>提案をメモに退避したり、場面から挿し絵の情景文を作ったりできます。</li>
+  </ul>
+
+  <h2>使い始めるには</h2>
+  <p>Sumire は推論エンジンを持ちません。手元の PC で <code>llama-server</code> と gguf 形式のモデルを用意するか、すでに動かしている推論サーバーにつなぎます。手順は <a href="https://github.com/claudycat-ai/Sumire#はじめかた">README の「はじめかた」</a>にあります。</p>
+  <div class="note">
+    <p>配布しているインストーラはコード署名をしていないため、初回の起動時に Windows の SmartScreen の警告が出ます。「詳細情報」から「実行」を押すと起動します。</p>
+  </div>
+
+  <h2>投稿サイトに出すときは</h2>
+  <p><kbd>Tab</kbd> で採用した提案の文が本文に残っていれば、そこは AI が生成した文章です。小説家になろう、カクヨム、ノベルアップ+ などに投稿するときは、各サイトの規約を確かめ、AI の利用を正しく申告してください。各サイトの区分の整理は <a href="https://github.com/claudycat-ai/Sumire#投稿サイトでの-ai-利用の申告">README</a> にあります。</p>
+
+  <footer>
+    <p>個人が自分の執筆のために作っている道具です。動作は保証しません。</p>
+    <p>作者: <a href="https://github.com/claudycat-ai">Claudy Cat</a>（<a href="https://note.com/claudycat">note</a>）</p>
+  </footer>
+</main>
+</body>
+</html>
