@@ -46,6 +46,13 @@ The summary below is as of November 2026. Definitions and enforcement change, so
   - If text accepted with `Tab` remains in the body, the work is an AI生成作品. The guideline asks you to choose AI生成作品 when in doubt.
 - Contests and newcomer awards may set conditions that differ from the site-wide rules. Check the entry guidelines.
 
+## Download
+
+Installers for Windows (x64) are distributed in two places. The files are the same.
+
+- [GitHub Releases](https://github.com/claudycat-ai/Sumire/releases)
+- [BOOTH](https://claudycat.booth.pm/items/9158205) (a free edition, plus a "supporter edition" for those who want to support development; its contents are the same as the free edition. The page is in Japanese)
+
 ## Installation Notes
 
 ### Windows: SmartScreen Warning
