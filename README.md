@@ -10,6 +10,8 @@ AI を「優秀な共著者」として使い、Copilot 風の Tab 採用 UX で
 
 Sumire から `llama-server` を起動して使う仕組みと、そのときに実測して決めたことは、Zenn の記事にまとめました: [デスクトップアプリから llama-server を起動して使うときに決めたこと](https://zenn.dev/claudycat/articles/7de3ce3fe21452)
 
+推論モデルの思考ブロックを、ストリーミング中の応答から取り分ける仕組みも、Zenn の記事にまとめました: [ストリーミング中の応答から、推論モデルの思考ブロックを取り分ける](https://zenn.dev/claudycat/articles/0d468dd38c8231)
+
 ## ステータス
 
 MVP 完成、磨き込みフェーズ。配布バイナリは無署名で提供する(下記「インストール時の注意」参照)。

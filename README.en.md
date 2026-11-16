@@ -8,6 +8,8 @@ An introduction with screenshots is available on note (in Japanese): [書くの�
 
 How Sumire launches and manages `llama-server`, and the measurements behind those decisions, are written up on Zenn (in Japanese): [デスクトップアプリから llama-server を起動して使うときに決めたこと](https://zenn.dev/claudycat/articles/7de3ce3fe21452)
 
+How Sumire separates a reasoning model's thinking blocks from a streaming response is also written up on Zenn (in Japanese): [ストリーミング中の応答から、推論モデルの思考ブロックを取り分ける](https://zenn.dev/claudycat/articles/0d468dd38c8231)
+
 > **Note for English-speaking users:** Sumire is designed and optimized for **Japanese web novel writing**. UI translations are provided, but context handling, typography, and chapter/episode structure are tuned for Japanese-language workflows. English-language fiction is a future extension and not a primary use case.
 
 ## Status
