@@ -6,6 +6,8 @@ Sumire treats AI as a "skilled co-author" and offers a Copilot-style Tab adoptio
 
 An introduction with screenshots is available on note (in Japanese): [書くのは自分。続きだけ AI に出してもらう執筆ツール「Sumire」を作りました](https://note.com/claudycat/n/n157df9665e43)
 
+How Sumire launches and manages `llama-server`, and the measurements behind those decisions, are written up on Zenn (in Japanese): [デスクトップアプリから llama-server を起動して使うときに決めたこと](https://zenn.dev/claudycat/articles/7de3ce3fe21452)
+
 > **Note for English-speaking users:** Sumire is designed and optimized for **Japanese web novel writing**. UI translations are provided, but context handling, typography, and chapter/episode structure are tuned for Japanese-language workflows. English-language fiction is a future extension and not a primary use case.
 
 ## Status

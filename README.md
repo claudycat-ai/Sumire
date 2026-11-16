@@ -8,6 +8,8 @@ AI を「優秀な共著者」として使い、Copilot 風の Tab 採用 UX で
 
 どんな道具かを画面写真つきで紹介した記事が、note にあります: [書くのは自分。続きだけ AI に出してもらう執筆ツール「Sumire」を作りました](https://note.com/claudycat/n/n157df9665e43)
 
+Sumire から `llama-server` を起動して使う仕組みと、そのときに実測して決めたことは、Zenn の記事にまとめました: [デスクトップアプリから llama-server を起動して使うときに決めたこと](https://zenn.dev/claudycat/articles/7de3ce3fe21452)
+
 ## ステータス
 
 MVP 完成、磨き込みフェーズ。配布バイナリは無署名で提供する(下記「インストール時の注意」参照)。
