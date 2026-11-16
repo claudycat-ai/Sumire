@@ -4,6 +4,8 @@ A desktop app for writing Japanese web novels with seamless switching between lo
 
 Sumire treats AI as a "skilled co-author" and offers a Copilot-style Tab adoption UX for inline continuation suggestions.
 
+An introduction with screenshots is available on note (in Japanese): [書くのは自分。続きだけ AI に出してもらう執筆ツール「Sumire」を作りました](https://note.com/claudycat/n/n157df9665e43)
+
 > **Note for English-speaking users:** Sumire is designed and optimized for **Japanese web novel writing**. UI translations are provided, but context handling, typography, and chapter/episode structure are tuned for Japanese-language workflows. English-language fiction is a future extension and not a primary use case.
 
 ## Status
