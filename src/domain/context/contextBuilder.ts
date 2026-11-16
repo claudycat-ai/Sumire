@@ -91,8 +91,8 @@ export function clearContextBuilderCache(): void {
 
 export async function buildContext(input: BuildContextInput): Promise<BuiltContext> {
   const provider = getProvider(input.aiConfig);
-  const window = input.aiConfig.contextWindow ?? 2048;
-  const settingsBudget = input.aiConfig.settingsTokenBudget ?? 500;
+  const window = input.aiConfig.contextWindow ?? 8192;
+  const settingsBudget = input.aiConfig.settingsTokenBudget ?? 2000;
   const reserved = Math.max(0, input.maxTokens);
   const template = input.promptTemplate;
   // テンプレートに差し込み口が無い内容はプロンプトに入らないので数えない。

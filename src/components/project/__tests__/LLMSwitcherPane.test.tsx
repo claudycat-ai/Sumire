@@ -177,7 +177,7 @@ describe("LLMSwitcherPane の llama-server の行の件数と中身", () => {
     const rows = screen.getAllByRole("listitem");
     const providers = DEFAULT_AI_CONFIG_BUNDLE.providers;
     expect(rows[0]?.textContent).toBe(
-      `●▾OpenAI 互換(1)${providers["openai-compatible"].model}`,
+      `○▾OpenAI 互換(1)${providers["openai-compatible"].model}`,
     );
     expect(rows[1]?.textContent).toBe(`○▾OpenAI(1)${providers.openai.model}`);
     expect(rows[0]?.textContent).not.toContain(ja.llamaServer.stateStopped);

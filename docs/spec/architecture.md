@@ -453,7 +453,7 @@ interface GenerationResponse {
 - デバッグ用の単発生成(`AIProvider.generate`、DevTools の `window.__sumire`)。応答をそのまま返す
 - maxTokens やタイムアウトの自動調整
 
-**maxTokens の見込み方**: 思考に使ったトークンも maxTokens に含まれる(推論サーバーの挙動)。タイムアウト(`timeoutMs`)も、思考の時間を含めて適用される。実測(Qwen3.8-27B ベースの fine-tune、text-generation-webui)では、思考は約 1,100〜1,300 字の英語で、思考が終わるまで 6〜8 秒かかった(約 40 tok/s なので、思考だけで 250〜320 トークン程度)。既定の 200 では思考の途中で上限に達することがあるので、思考モデルでは maxTokens を 1000 前後に設定する。
+**maxTokens の見込み方**: 思考に使ったトークンも maxTokens に含まれる(推論サーバーの挙動)。タイムアウト(`timeoutMs`)も、思考の時間を含めて適用される。実測(Qwen3.8-27B ベースの fine-tune、text-generation-webui)では、思考は約 1,100〜1,300 字の英語で、思考が終わるまで 6〜8 秒かかった(約 40 tok/s なので、思考だけで 250〜320 トークン程度)。新規プロジェクトのローカルのプロバイダ(OpenAI 互換、`llama-server`)の既定は、思考込みで 4000、`timeoutMs` は 120000(2026-11-16 に見直し。それまでは初期検証モデルに合わせた 200 と 60000で、思考の途中で上限に達することがあった)。
 
 **採らなかった案**:
 
@@ -489,12 +489,12 @@ MVP のあとに加えたアダプタ:
 
 ### コンテキスト構築の優先順位
 
-コンテキスト窓上限(`aiConfig.contextWindow`、既定 2048。`llama-server` プロバイダでは、`sumire.json` の値ではなく、いま使うモデルに決めてあるコンテキスト長。本書「llama-server プロバイダ」の「コンテキスト長の扱い」)から逆算して以下の順で詰める:
+コンテキスト窓上限(`aiConfig.contextWindow`、既定 8192。`llama-server` プロバイダでは、`sumire.json` の値ではなく、いま使うモデルに決めてあるコンテキスト長。本書「llama-server プロバイダ」の「コンテキスト長の扱い」)から逆算して以下の順で詰める:
 
 1. **システムプロンプト** (最優先、計測してそのまま使う)
-2. **チェック済み設定情報**(`aiConfig.settingsTokenBudget` 既定 500 tok を上限にファイル単位で詰める)
+2. **チェック済み設定情報**(`aiConfig.settingsTokenBudget` 既定 2000 tok を上限にファイル単位で詰める)
 3. **直前の本文**(残り全部、現在編集中の章ファイル内のみ。コンテキスト窓 - システム - 設定 - 生成余地に収まるよう先頭から削る)
-4. **生成余地** (`parameters.maxTokens`、既定 200 tok)
+4. **生成余地** (`parameters.maxTokens`、ローカルのプロバイダの既定 4000 tok、OpenAI は 200 tok)
 
 プロンプトテンプレート(本書「プロンプトテンプレート」)を使うときは、ContextBuilder が解決済みのテンプレートを受け取り、次のように数える(テンプレートが無ければ上の計算のまま):
 
@@ -681,8 +681,8 @@ MVP のあとに加えたアダプタ:
 
 前の本文を厚く、後の本文を薄く入れる。窓に収まらなければ、場面から遠い本文から削り、場面そのものは削らない。
 
-1. `W = contextWindow ?? 2048`。`R0 = W − 指示文 − テンプレートの文字列 − 設定ブロック − 場面ブロック − 前後の見出しの分 − maxTokens`(`maxTokens` は挿し絵用の値)。
-2. 設定は、続き生成と同じく `settingsTokenBudget`(既定 500)を上限に、ファイル単位で挿入順に詰める(`packSettingSections`)。予算に入らず外したファイルの表示名を記録する。
+1. `W = contextWindow ?? 8192`。`R0 = W − 指示文 − テンプレートの文字列 − 設定ブロック − 場面ブロック − 前後の見出しの分 − maxTokens`(`maxTokens` は挿し絵用の値)。
+2. 設定は、続き生成と同じく `settingsTokenBudget`(既定 2000)を上限に、ファイル単位で挿入順に詰める(`packSettingSections`)。予算に入らず外したファイルの表示名を記録する。
 3. `R0 < 0` なら、採用した設定ファイルを挿入順の後ろから 1 件ずつ外し、そのたびに `R0` を計算し直す。設定が 0 件になっても `R0 < 0` なら、「場面がコンテキストに収まらない」として送らない。設定の分であふれただけのときに、場面が長すぎると伝えないため。
 4. 後の本文: `min(後の本文の全量のトークン数, floor(R0 / 4))` を予算に、末尾から削る(`trimBodyTail`)。
 5. 前の本文: `R0 − 実際に入れた後の本文のトークン数` を予算に、先頭から削る(`trimBodyHead`)。
@@ -1050,16 +1050,16 @@ my-novel/
   "ai": {
     "provider": "openai-compatible",
     "endpoint": "http://127.0.0.1:5000/v1",
-    "model": "japanese-stablelm-instruct-alpha-7b-v2",
+    "model": "",
     "parameters": {
       "temperature": 0.8,
       "topP": 0.9,
-      "maxTokens": 200
+      "maxTokens": 4000
     },
     "candidateCount": 1,
     "systemPrompt": null,
-    "settingsTokenBudget": 500,
-    "contextWindow": 2048
+    "settingsTokenBudget": 2000,
+    "contextWindow": 8192
   },
   "snapshots": {
     "maxKeep": 10
@@ -1192,7 +1192,7 @@ my-novel/
 - `temperature` は有限の数なら採る。`maxTokens` / `timeoutMs` は有限の正の数なら採る。それ以外の値は、トーストを出さずに既定値にする。
 - `instruction` は、前後の空白を除いて空なら内蔵の指示文を使う。文字列でも文字列の配列でもない値も、内蔵の指示文になる。
 - ほかのキーは無視する。`topP` と `extras` は持たず、続き生成の `parameters` の値を使う。接続先・モデル・`contextWindow`・`settingsTokenBudget`・`thinking` も続き生成と共通。
-- **`contextWindow` に注意**: 予算配分(本書「挿し絵の情景文」の「予算配分」)は `contextWindow` から挿し絵用の `maxTokens` を差し引く。`contextWindow` が既定の 2048 のままだと、既定の `maxTokens`(4096)を引いた残りが負になり、毎回「場面がコンテキストに収まりません」になる。`contextWindow` を推論サーバーで読み込んだモデルのコンテキスト長に合わせるか、挿し絵用の `maxTokens` を下げる。`contextWindow` は続き生成と共通なので、上げると続き生成で送る直前の本文も長くなる。`llama-server` プロバイダでは、`contextWindow` の代わりに、いま使うモデルに決めてあるコンテキスト長が使われる。
+- **`contextWindow` に注意**: 予算配分(本書「挿し絵の情景文」の「予算配分」)は `contextWindow` から挿し絵用の `maxTokens` を差し引く。`contextWindow` が既定の 8192 のままだと、既定の `maxTokens`(4096)を引いた残りは約 4,000 トークンで、長い場面は「場面がコンテキストに収まりません」になる(2026-11-16 までの既定 2048 では、残りが負になり毎回そうなった)。`contextWindow` を推論サーバーで読み込んだモデルのコンテキスト長に合わせるか、挿し絵用の `maxTokens` を下げる。`contextWindow` は続き生成と共通なので、上げると続き生成で送る直前の本文も長くなる。`llama-server` プロバイダでは、`contextWindow` の代わりに、いま使うモデルに決めてあるコンテキスト長が使われる。
 - 解決の口は `domain/illustration/illustrationConfig.ts` の `resolveIllustrationConfig` に限る。解決は `Alt+I` のたびに行い、読み込み時にはトーストを出さない。
 - 読み込み時に型を検査しない。読めない値も書かれたまま持ち、AI 設定画面で他の項目を保存しても失わない(書き戻す)。
 - 既定値で埋めない。新規プロジェクトの `sumire.json` にも書かない。既存プロジェクトに `illustration` が無ければ、保存しても書き足さない。
@@ -1207,9 +1207,9 @@ my-novel/
 "llama-server": {
   "endpoint": "",
   "model": "",
-  "parameters": { "temperature": 0.8, "topP": 0.9, "maxTokens": 200 },
+  "parameters": { "temperature": 0.8, "topP": 0.9, "maxTokens": 4000 },
   "systemPrompt": null,
-  "settingsTokenBudget": 500,
+  "settingsTokenBudget": 2000,
   "template": { "preset": "gemma4" },
   "thinking": {
     "enabled": true,
@@ -1221,7 +1221,7 @@ my-novel/
 - 使うのは `parameters`、`systemPrompt`、`timeoutMs`、`settingsTokenBudget`、`thinking`、`template`、`illustration`。規則は OpenAI 互換プロバイダのセクションと同じ。
 - `endpoint` と `model` は空文字にする。`contextWindow` は書かない(既定のセクションにも持たせない)。書かれていても使わない。接続先・モデル・コンテキスト長は、起動した `llama-server` の状態と、アプリ側の設定(`preferences.json`)から決まる。
 - `llama-server` の実行ファイルのパス、モデルのフォルダ、モデルごとのコンテキスト長、いま使うモデル、追加の起動引数は、ここには書かない(本書「llama-server プロバイダ」の「設定の置き場所」)。
-- 既存のプロジェクトにこのセクションが無ければ、読み込み時に既定値で補う。`activeProvider` は変えない。次に AI 設定を保存したときに書き足される。新規プロジェクトの `sumire.json` には、最初からこのセクションがある。
+- 既存のプロジェクトにこのセクションが無ければ、読み込み時に既定値で補う。`activeProvider` は変えない。次に AI 設定を保存したときに書き足される。新規プロジェクトの `sumire.json` には、最初からこのセクションがあり、`activeProvider` も `llama-server` にする(2026-11-16。それまでは OpenAI 互換)。AI 設定の無い `sumire.json` を読んだときも同じ既定になる。旧い形(`ai` のみ)は OpenAI 互換のまま。
 - `schemaVersion` は上げない。古い Sumire は、知らないプロバイダのキーを保存時に落とし、`activeProvider` が `llama-server` なら OpenAI 互換に戻す(既存の挙動)。
 
 ### 章ファイル(`chapters/*.md`)

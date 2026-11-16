@@ -487,7 +487,10 @@ describe("画面から選んだ指定の反映(template-settings-ui 3.3, 3.4)", 
     useAppStore.setState({ currentProject: { path: "/proj", title: "test" } });
     realStore
       .getState()
-      .loadFromMeta({ aiConfig: structuredClone(DEFAULT_AI_CONFIG_BUNDLE) } as never);
+      .loadFromMeta({
+        // llama-server は起動の関門を通るので、ここでは OpenAI 互換で要求する
+        aiConfig: { ...structuredClone(DEFAULT_AI_CONFIG_BUNDLE), activeProvider: "openai-compatible" },
+      } as never);
     mocks.getActiveConfig.mockImplementation(() => realStore.getState().getActiveConfig());
   });
 

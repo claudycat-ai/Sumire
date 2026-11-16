@@ -251,6 +251,7 @@ describe("extractAIConfigBundle", () => {
     const validProviders: readonly ProviderId[] = [
       "openai-compatible",
       "openai",
+      "llama-server",
     ];
 
     for (const meta of cases) {
@@ -901,8 +902,8 @@ describe("llama-server のセクション(llama-server-provider 1.2, 1.5, 2.9)",
     // 既定値どうしで参照を共有しない
     expect(section.parameters).not.toBe(local.parameters);
     expect(section.thinking).not.toBe(local.thinking);
-    // 既定のバンドルの「現在使うプロバイダ」は変えない
-    expect(DEFAULT_AI_CONFIG_BUNDLE.activeProvider).toBe("openai-compatible");
+    // 新規プロジェクトの「現在使うプロバイダ」は llama-server(2026-11-16 の既定値の見直し)
+    expect(DEFAULT_AI_CONFIG_BUNDLE.activeProvider).toBe("llama-server");
   });
 
   it("llama-server のセクションが無い sumire.json を読むと既定値で補い、現在使うプロバイダは変えない(1.5)", () => {
@@ -940,9 +941,13 @@ describe("llama-server のセクション(llama-server-provider 1.2, 1.5, 2.9)",
     } as SumireProjectMeta;
     const empty = { ...META_BASE } as SumireProjectMeta;
 
-    for (const meta of [legacy, empty]) {
+    for (const [meta, active] of [
+      [legacy, "openai-compatible"],
+      [empty, "llama-server"],
+    ] as const) {
       const bundle = extractAIConfigBundle(meta);
-      expect(bundle.activeProvider).toBe("openai-compatible");
+      // 旧い形は OpenAI 互換で使っていたもの。設定なしは新規プロジェクトと同じ既定
+      expect(bundle.activeProvider).toBe(active);
       expect(bundle.providers["llama-server"]).toEqual(
         withoutThinking(DEFAULT_AI_CONFIG_BUNDLE.providers["llama-server"]),
       );
@@ -1034,7 +1039,7 @@ describe("llama-server のセクション(llama-server-provider 1.2, 1.5, 2.9)",
     expect(after?.providers.openai).toEqual(
       DEFAULT_AI_CONFIG_BUNDLE.providers.openai,
     );
-    expect(after?.activeProvider).toBe("openai-compatible");
+    expect(after?.activeProvider).toBe("llama-server");
   });
 
   it("キーの有無の状態は llama-server のキーを持ち、clear で未取得に戻る", () => {

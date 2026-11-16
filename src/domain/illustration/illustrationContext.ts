@@ -104,8 +104,8 @@ export async function buildIllustrationContext(
 ): Promise<IllustrationContextResult> {
   const { aiConfig, settings, scene } = input;
   const provider = getProvider(aiConfig);
-  const window = aiConfig.contextWindow ?? 2048;
-  const settingsBudget = aiConfig.settingsTokenBudget ?? 500;
+  const window = aiConfig.contextWindow ?? 8192;
+  const settingsBudget = aiConfig.settingsTokenBudget ?? 2000;
   const reserved = Math.max(0, settings.maxTokens);
   const L = ILLUSTRATION_BLOCK_LABELS;
 

@@ -52,14 +52,14 @@ describe("createProject sumire.json 出力 (Req 1.1, 4.4)", () => {
     const meta = JSON.parse((args as { metaJson: string }).metaJson);
 
     expect(meta.aiConfig).toBeDefined();
-    expect(meta.aiConfig.activeProvider).toBe("openai-compatible");
+    expect(meta.aiConfig.activeProvider).toBe("llama-server");
     expect(meta.aiConfig.providers["openai-compatible"]).toBeDefined();
     expect(meta.aiConfig.providers.openai).toBeDefined();
     // 旧 ai フィールドは新スキーマには出力されない
     expect(meta.ai).toBeUndefined();
   });
 
-  it("具体値: openai-compatible.contextWindow=2048, openai.contextWindow=128000", async () => {
+  it("具体値: openai-compatible.contextWindow=8192, openai.contextWindow=128000", async () => {
     mockInvoke.mockResolvedValueOnce("/test/parent/y");
     await createProject({
       parentPath: "/test/parent",
@@ -71,7 +71,7 @@ describe("createProject sumire.json 出力 (Req 1.1, 4.4)", () => {
     const [, args] = mockInvoke.mock.calls[0];
     const meta = JSON.parse((args as { metaJson: string }).metaJson);
 
-    expect(meta.aiConfig.providers["openai-compatible"].contextWindow).toBe(2048);
+    expect(meta.aiConfig.providers["openai-compatible"].contextWindow).toBe(8192);
     expect(meta.aiConfig.providers.openai.contextWindow).toBe(128000);
   });
 
@@ -107,7 +107,7 @@ describe("createProject sumire.json 出力 (Req 1.1, 4.4)", () => {
     expect(
       (result.meta as { aiConfig: { providers: Record<string, { contextWindow: number }> } })
         .aiConfig.providers["openai-compatible"].contextWindow,
-    ).toBe(2048);
+    ).toBe(8192);
     expect(
       (result.meta as { aiConfig: { providers: Record<string, { contextWindow: number }> } })
         .aiConfig.providers.openai.contextWindow,
@@ -194,15 +194,15 @@ describe("createProject sumire.json の llama-server のセクション (llama-s
       "openai",
       "openai-compatible",
     ]);
-    expect(meta.aiConfig.activeProvider).toBe("openai-compatible");
+    expect(meta.aiConfig.activeProvider).toBe("llama-server");
     expect(meta.aiConfig.providers["llama-server"]).toEqual({
       provider: "llama-server",
       endpoint: "",
       model: "",
-      parameters: { temperature: 0.8, topP: 0.9, maxTokens: 200 },
+      parameters: { temperature: 0.8, topP: 0.9, maxTokens: 4000 },
       systemPrompt: null,
-      timeoutMs: 60000,
-      settingsTokenBudget: 500,
+      timeoutMs: 120000,
+      settingsTokenBudget: 2000,
       thinking: {
         enabled: true,
         tags: [{ open: "<think>", close: "</think>" }],

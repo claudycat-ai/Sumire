@@ -102,10 +102,10 @@ Choose it under "Prompt template" in the AI settings. The choice is saved as soo
 | `chatml` | ChatML-format models | Left to the model |
 | `chatml-nothink` | ChatML-format models | Suppressed |
 
-When you choose `gemma4-think`, Sumire adds the tags that separate thinking from the text (`<|channel>` and `<channel|>`) to `thinking` in `sumire.json`. It does not change any other setting, so adjust these two yourself:
+When you choose `gemma4-think`, Sumire adds the tags that separate thinking from the text (`<|channel>` and `<channel|>`) to `thinking` in `sumire.json`. It does not change any other setting. Adjust these two to the length of the thinking:
 
-- **Max Tokens**: this value includes the tokens spent on thinking, so the default of 200 cuts off in the middle of the thinking. When it is below 1000, a hint appears in the settings. Raise it to around 1,800.
-- **Timeout**: a request times out after 60 seconds. If generation takes longer, raise `timeoutMs` (default 60000) in the same section of `sumire.json` to around 120000. Before editing `sumire.json`, close the project with "Close Project" in the header, and reopen it after editing (`sumire.json` is read only when a project is opened).
+- **Max Tokens**: this value includes the tokens spent on thinking. The default for new projects is 4000. When it is below 1000, a hint appears in the settings. Raise it if generation stops in the middle of the thinking.
+- **Timeout**: in new projects, a request times out after 120 seconds. If generation takes longer, raise `timeoutMs` (default 120000) in the same section of `sumire.json`. Before editing `sumire.json`, close the project with "Close Project" in the header, and reopen it after editing (`sumire.json` is read only when a project is opened).
 
 For formats not covered by the presets, write your own under `custom` in `template` under `aiConfig` → `providers` → `llama-server` in `sumire.json` (close the project before editing, as above). See "プロンプトテンプレート" in [`docs/spec/architecture.md`](docs/spec/architecture.md) (Japanese). When a custom template is written, the settings show "Custom (sumire.json)". Choosing a preset there replaces it after a confirmation.
 
@@ -125,7 +125,7 @@ Character and worldbuilding files are sent to the model with each request only w
 
 ### If you already run an inference server
 
-If you start an inference server with an OpenAI-compatible API (`/v1/completions`) yourself, such as text-generation-webui, use "OpenAI Compatible" in "LLM Switcher". In the AI settings, set Endpoint, Model, and Context Window to match your server. The defaults are `http://127.0.0.1:5000/v1` and a context window of 2048, which will often not match. Choose the prompt template in the same AI settings.
+If you start an inference server with an OpenAI-compatible API (`/v1/completions`) yourself, such as text-generation-webui, use "OpenAI Compatible" in "LLM Switcher". In the AI settings, set Endpoint, Model, and Context Window to match your server. The defaults are `http://127.0.0.1:5000/v1` and a context window of 8192. Set the context window to match the loaded model. Choose the prompt template in the same AI settings.
 
 The author has verified Sumire with `llama-server` and text-generation-webui.
 

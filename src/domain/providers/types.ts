@@ -103,12 +103,13 @@ export interface AIConfig {
   /**
    * 設定情報(includeInContext: true の設定ファイル)に割り当てるトークン予算上限。
    * ContextBuilder はこの上限内に収まるよう、超過分のファイルを丸ごと外す。
-   * 既定 500。仕様 §322 参照。
+   * 既定 2000。仕様 §322 参照。
    */
   settingsTokenBudget?: number;
   /**
    * モデルのコンテキスト窓(トークン数)。本文切り詰めの基準に使う。
-   * 既定 2048(初期検証モデル japanese-stablelm-instruct-alpha-7b-v2 の値)。
+   * 既定 8192(いまの主なモデルが確保できる長さのうち、どのモデルでも収まる値)。
+   * `llama-server` では使わない(アプリ側の設定のモデルごとの値で決まる)。
    */
   contextWindow?: number;
   /**
@@ -195,29 +196,35 @@ export interface AIConfigBundle {
 }
 
 /**
- * MVP の既定 AI 設定。新規プロジェクト作成時や、`sumire.json` の ai セクション欠落時のフォールバック。
+ * OpenAI 互換の既定 AI 設定。新規プロジェクト作成時や、`sumire.json` の ai セクション欠落時のフォールバック。
+ *
+ * - `model` は空文字。text-generation-webui などは読み込み済みのモデルを使い、名前を見ない
+ * - `maxTokens` は思考込みの上限。思考の分離を既定で有効にしているので、思考だけで
+ *   使い切らない大きさにする(2026-11-16 見直し。それまでは初期検証モデルに合わせた 200)
+ * - `timeoutMs` は、思考込みの生成と、設定を変えたときの本文の読み込み直しを見込んだ長さ
  */
 export const DEFAULT_AI_CONFIG: AIConfig = {
   provider: "openai-compatible",
   endpoint: "http://127.0.0.1:5000/v1",
-  model: "japanese-stablelm-instruct-alpha-7b-v2",
+  model: "",
   parameters: {
     temperature: 0.8,
     topP: 0.9,
-    maxTokens: 200,
+    maxTokens: 4000,
   },
   systemPrompt: null,
-  timeoutMs: 60000,
-  settingsTokenBudget: 500,
-  contextWindow: 2048,
+  timeoutMs: 120000,
+  settingsTokenBudget: 2000,
+  contextWindow: 8192,
   thinking: copyDefaultThinkingConfig(),
 };
 
 /**
  * 全プロバイダ種別の既定 `AIConfig` を含むバンドルの初期値。
- * `activeProvider` は既存ユーザーの後方互換のため `openai-compatible` を採用する。
+ * `activeProvider` は、Sumire が推論サーバーを自分で起動する `llama-server`。
+ * 既存の `sumire.json` は自分の `activeProvider` を持つので、この値の影響を受けない。
  *
- * - `openai-compatible`: 既存の `DEFAULT_AI_CONFIG`(localhost:5000, japanese-stablelm)
+ * - `openai-compatible`: `DEFAULT_AI_CONFIG`(localhost:5000)
  * - `openai`: gpt-4o-mini / contextWindow 128000(API キーは別経路で注入する想定)
  * - `llama-server`: 生成パラメータ・思考の分離は `openai-compatible` の既定と同じ。
  *   接続先とモデル名は空文字で、`contextWindow` は持たせない(接続先・モデル・コンテキスト長は
@@ -226,7 +233,7 @@ export const DEFAULT_AI_CONFIG: AIConfig = {
  * 各セクションの `thinking` は `DEFAULT_THINKING_CONFIG` のコピーで、参照を共有しない。
  */
 export const DEFAULT_AI_CONFIG_BUNDLE: AIConfigBundle = {
-  activeProvider: "openai-compatible",
+  activeProvider: "llama-server",
   providers: {
     "openai-compatible": DEFAULT_AI_CONFIG,
     openai: {
