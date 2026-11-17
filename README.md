@@ -12,6 +12,8 @@ Sumire から `llama-server` を起動して使う仕組みと、そのときに
 
 推論モデルの思考ブロックを、ストリーミング中の応答から取り分ける仕組みも、Zenn の記事にまとめました: [ストリーミング中の応答から、推論モデルの思考ブロックを取り分ける](https://zenn.dev/claudycat/articles/0d468dd38c8231)
 
+Gemma 4 に Completion で続きを書かせるためのプロンプトテンプレートの形も、Zenn の記事にまとめました: [Gemma 4 に /v1/completions で文章の続きを書かせるプロンプトの形](https://zenn.dev/claudycat/articles/4016ffb2735fc3)
+
 ## ステータス
 
 MVP 完成、磨き込みフェーズ。配布バイナリは無署名で提供する(下記「インストール時の注意」参照)。

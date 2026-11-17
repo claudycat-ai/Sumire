@@ -10,6 +10,8 @@ How Sumire launches and manages `llama-server`, and the measurements behind thos
 
 How Sumire separates a reasoning model's thinking blocks from a streaming response is also written up on Zenn (in Japanese): [ストリーミング中の応答から、推論モデルの思考ブロックを取り分ける](https://zenn.dev/claudycat/articles/0d468dd38c8231)
 
+The prompt template shapes that let Gemma 4 continue text through Completion are also written up on Zenn (in Japanese): [Gemma 4 に /v1/completions で文章の続きを書かせるプロンプトの形](https://zenn.dev/claudycat/articles/4016ffb2735fc3)
+
 > **Note for English-speaking users:** Sumire is designed and optimized for **Japanese web novel writing**. UI translations are provided, but context handling, typography, and chapter/episode structure are tuned for Japanese-language workflows. English-language fiction is a future extension and not a primary use case.
 
 ## Status
