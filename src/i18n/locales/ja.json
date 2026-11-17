@@ -253,7 +253,7 @@
     "illustrationSuggestionBusy": "続きの提案を生成中です。終わってからもう一度押してください",
     "illustrationProviderUnsupported": "挿し絵の情景文は、ローカルのプロバイダ(OpenAI 互換・llama.cpp)でだけ使えます",
     "illustrationNoScene": "挿し絵にする場面を選択するか、場面の行にカーソルを置いてください",
-    "illustrationTemplateMissing": "挿し絵用のテンプレートが指定されていません。sumire.json の illustration.template にプリセットか自由記述を書いてください",
+    "illustrationTemplateMissing": "挿し絵用のテンプレートが決まりません。AI 設定画面でプロンプトテンプレートのプリセットを選ぶか、sumire.json の illustration.template にプリセットか自由記述を書いてください",
     "illustrationConfigUnreadable": "挿し絵用の設定を読めません。sumire.json の illustration はオブジェクトで書いてください",
     "illustrationTemplateUnreadable": "挿し絵用のテンプレートの指定を読めません。sumire.json の illustration.template には preset か custom のどちらか一方を書いてください",
     "illustrationTemplatePresetUnknown": "挿し絵用のテンプレートのプリセット「{{name}}」はありません。使えるのは gemma4 / gemma4-think / chatml / chatml-nothink です",

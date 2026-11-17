@@ -135,8 +135,9 @@ export function requestIllustration(view: EditorView): boolean {
     toastError(i18n.t("toast.illustrationProviderUnsupported"));
     return true;
   }
-  // 5. 挿し絵用の設定の不備(7.2)。要求のたびに解決する
-  const resolution = resolveIllustrationConfig(activeConfig.illustration);
+  // 5. 挿し絵用の設定の不備(7.2)。要求のたびに解決する。illustration.template が無ければ、
+  // 続き生成のテンプレートのプリセットと同じ名前を使う(AI 設定画面で選び直すと次から効く)
+  const resolution = resolveIllustrationConfig(activeConfig.illustration, activeConfig.template);
   if (resolution.kind === "error") {
     toastError(configErrorMessage(resolution.error));
     return true;

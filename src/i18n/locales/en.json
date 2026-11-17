@@ -253,7 +253,7 @@
     "illustrationSuggestionBusy": "A continuation suggestion is being generated. Press again after it finishes.",
     "illustrationProviderUnsupported": "Scene descriptions for illustrations are only available with a local provider (OpenAI-compatible or llama.cpp).",
     "illustrationNoScene": "Select the scene to illustrate, or place the cursor on a line of the scene.",
-    "illustrationTemplateMissing": "No illustration template is set. In sumire.json, write a preset or a custom template in illustration.template.",
+    "illustrationTemplateMissing": "No illustration template is set. Choose a prompt template preset in the AI settings, or write a preset or a custom template in illustration.template in sumire.json.",
     "illustrationConfigUnreadable": "Cannot read the illustration settings. In sumire.json, write illustration as an object.",
     "illustrationTemplateUnreadable": "Cannot read the illustration template setting. In sumire.json, give illustration.template exactly one of preset or custom.",
     "illustrationTemplatePresetUnknown": "There is no illustration template preset \"{{name}}\". Available presets: gemma4 / gemma4-think / chatml / chatml-nothink.",

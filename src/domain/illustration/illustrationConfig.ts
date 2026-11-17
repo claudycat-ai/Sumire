@@ -3,6 +3,8 @@
  * `illustration-prompt` spec の design.md「illustrationConfig」に対応する。
  *
  * - 生の値を、生成に使う値(テンプレート・指示文・温度・最大トークン・タイムアウト)に解決する
+ * - `illustration.template` が無いときは、続き生成のテンプレートのプリセットと同じ名前の
+ *   挿し絵用のプリセットを使う(2026-11-17。新規プロジェクトのまま `Alt+I` を使えるように)
  * - 既定値(`ILLUSTRATION_DEFAULTS`)と内蔵の指示文(`DEFAULT_ILLUSTRATION_INSTRUCTION`)を持つ
  *
  * 純粋な関数とデータだけを持つ。DOM・CodeMirror・zustand・i18n は import しない。
@@ -24,7 +26,10 @@ export interface IllustrationSettings {
 }
 
 export type IllustrationConfigError =
-  /** illustration が無い、または illustration.template が無い */
+  /**
+   * illustration が無い、または illustration.template が無く、続き生成のテンプレートも
+   * プリセットでない(指定なし・自由記述・不備のある指定)
+   */
   | { kind: "missingTemplate" }
   /** illustration がオブジェクトでない */
   | { kind: "unreadable" }
@@ -90,45 +95,73 @@ function resolveInstruction(value: unknown): string {
 }
 
 /**
+ * `illustration.template` が無いときに使う、挿し絵用のテンプレートを決める。
+ * 続き生成のテンプレート(`AIConfig.template`)が内蔵プリセットなら、同じ名前の挿し絵用の
+ * プリセットを返す。指定なし・自由記述・不備のある指定なら `null`(素の連結には戻さない)。
+ * 続き生成の指定の解釈は `resolvePromptTemplate` に任せ、ここで読み直さない。
+ */
+function templateFromContinuation(continuationTemplate: unknown): ParsedPromptTemplate | null {
+  const continuation = resolvePromptTemplate(continuationTemplate);
+  if (continuation.kind !== "ok" || continuation.template.source.kind !== "preset") {
+    return null;
+  }
+  const resolution = resolvePromptTemplate(
+    { preset: continuation.template.source.name },
+    ILLUSTRATION_TEMPLATE_PRESETS,
+  );
+  return resolution.kind === "ok" ? resolution.template : null;
+}
+
+/**
  * `AIConfig.illustration` の生の値を解決する。`AIConfig.illustration` を読む口はこの関数に限る。
  *
- * 1. `undefined` / `null` → `missingTemplate`
+ * `continuationTemplate` は続き生成のテンプレートの生の値(`AIConfig.template`)。
+ * `illustration.template` が無いときの代わりを決めるためだけに使う。
+ *
+ * 1. `undefined` / `null` → `{}` と同じに扱う(下の 3 へ)
  * 2. オブジェクトでない(配列を含む)→ `unreadable`
- * 3. `template` が無い(`undefined` / `null`)→ `missingTemplate`
+ * 3. `template` が無い(`undefined` / `null`)→ 続き生成のテンプレートが内蔵プリセットなら、
+ *    同じ名前の挿し絵用のプリセットを使う。そうでなければ `missingTemplate`
  * 4. `template` は挿し絵用のプリセット表で解決する。不備は `{ kind: "template", error }`
+ *    (続き生成のテンプレートには戻さない)
  * 5. `temperature` / `maxTokens` / `timeoutMs` は、有限の数で `maxTokens` / `timeoutMs` が正なら採り、
  *    それ以外は黙って既定値にする
  * 6. `instruction` は文字列か文字列の配列(`\n` でつなぐ)。空や読めない形なら内蔵の指示文
  * 7. ほかのキーは無視する
  */
-export function resolveIllustrationConfig(raw: unknown): IllustrationConfigResolution {
-  if (raw === undefined || raw === null) {
-    return { kind: "error", error: { kind: "missingTemplate" } };
-  }
-  if (!isPlainObject(raw)) {
+export function resolveIllustrationConfig(
+  raw: unknown,
+  continuationTemplate?: unknown,
+): IllustrationConfigResolution {
+  const section: unknown = raw === undefined || raw === null ? {} : raw;
+  if (!isPlainObject(section)) {
     return { kind: "error", error: { kind: "unreadable" } };
   }
-  if (raw.template === undefined || raw.template === null) {
-    return { kind: "error", error: { kind: "missingTemplate" } };
-  }
 
-  const resolution = resolvePromptTemplate(raw.template, ILLUSTRATION_TEMPLATE_PRESETS);
+  let template: ParsedPromptTemplate;
+  const resolution = resolvePromptTemplate(section.template, ILLUSTRATION_TEMPLATE_PRESETS);
   if (resolution.kind === "error") {
     return { kind: "error", error: { kind: "template", error: resolution.error } };
   }
   if (resolution.kind === "none") {
-    // template が undefined / null のときだけ none になり、上で弾いている。
-    return { kind: "error", error: { kind: "missingTemplate" } };
+    // template が undefined / null。続き生成のプリセットと同じ名前を使う
+    const fallback = templateFromContinuation(continuationTemplate);
+    if (fallback === null) {
+      return { kind: "error", error: { kind: "missingTemplate" } };
+    }
+    template = fallback;
+  } else {
+    template = resolution.template;
   }
 
   return {
     kind: "ok",
     settings: {
-      template: resolution.template,
-      instruction: resolveInstruction(raw.instruction),
-      temperature: finiteOr(raw.temperature, ILLUSTRATION_DEFAULTS.temperature),
-      maxTokens: positiveOr(raw.maxTokens, ILLUSTRATION_DEFAULTS.maxTokens),
-      timeoutMs: positiveOr(raw.timeoutMs, ILLUSTRATION_DEFAULTS.timeoutMs),
+      template,
+      instruction: resolveInstruction(section.instruction),
+      temperature: finiteOr(section.temperature, ILLUSTRATION_DEFAULTS.temperature),
+      maxTokens: positiveOr(section.maxTokens, ILLUSTRATION_DEFAULTS.maxTokens),
+      timeoutMs: positiveOr(section.timeoutMs, ILLUSTRATION_DEFAULTS.timeoutMs),
     },
   };
 }

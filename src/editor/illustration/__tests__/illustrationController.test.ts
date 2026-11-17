@@ -143,6 +143,8 @@ interface ConfigOptions {
   provider?: string;
   illustration?: unknown;
   contextWindow?: number;
+  /** 続き生成のテンプレート。省くと `gemma4` のプリセット */
+  template?: unknown;
 }
 
 /** 情景文の生成に使う AI 設定。`illustration` を省くと `gemma4-think` のプリセットだけを指定する */
@@ -156,7 +158,7 @@ function testConfig(options: ConfigOptions = {}): AIConfig {
     timeoutMs: 60000,
     contextWindow: options.contextWindow ?? 32768,
     thinking: { enabled: true, tags: [{ open: "<think>", close: "</think>" }] },
-    template: { preset: "gemma4" },
+    template: "template" in options ? options.template : { preset: "gemma4" },
     illustration:
       "illustration" in options ? options.illustration : { template: { preset: "gemma4-think" } },
   };
@@ -419,18 +421,26 @@ describe("開始の条件(design.md の開始の条件 1〜6)", () => {
   });
 
   describe("5. 挿し絵用の設定の不備(7.2)", () => {
-    const cases: { title: string; illustration: unknown; toast: string }[] = [
+    const TEMPLATE_MISSING_TOAST =
+      "挿し絵用のテンプレートが決まりません。AI 設定画面でプロンプトテンプレートのプリセットを選ぶか、sumire.json の illustration.template にプリセットか自由記述を書いてください";
+    const cases: { title: string; illustration: unknown; template?: unknown; toast: string }[] = [
       {
-        title: "illustration が無い",
+        title: "illustration が無く、続き生成のテンプレートも指定なし",
         illustration: undefined,
-        toast:
-          "挿し絵用のテンプレートが指定されていません。sumire.json の illustration.template にプリセットか自由記述を書いてください",
+        template: undefined,
+        toast: TEMPLATE_MISSING_TOAST,
       },
       {
-        title: "illustration.template が無い",
+        title: "illustration.template が無く、続き生成のテンプレートも指定なし",
         illustration: { temperature: 0.5 },
-        toast:
-          "挿し絵用のテンプレートが指定されていません。sumire.json の illustration.template にプリセットか自由記述を書いてください",
+        template: undefined,
+        toast: TEMPLATE_MISSING_TOAST,
+      },
+      {
+        title: "illustration が無く、続き生成のテンプレートが自由記述",
+        illustration: undefined,
+        template: { custom: "{{system}}{{settings}}{{body}}" },
+        toast: TEMPLATE_MISSING_TOAST,
       },
       {
         title: "illustration がオブジェクトでない",
@@ -464,7 +474,11 @@ describe("開始の条件(design.md の開始の条件 1〜6)", () => {
 
     for (const testCase of cases) {
       it(`${testCase.title}なら、直し方を伝える`, async () => {
-        const { view } = setup({ config: testConfig({ illustration: testCase.illustration }) });
+        const config = testConfig({
+          illustration: testCase.illustration,
+          ...("template" in testCase ? { template: testCase.template } : {}),
+        });
+        const { view } = setup({ config });
         await expectRejected(view, testCase.toast);
       });
     }
@@ -481,7 +495,10 @@ describe("開始の条件(design.md の開始の条件 1〜6)", () => {
   });
 
   it("条件は上から順に確かめる(提案の生成中は、設定の不備より先に伝える)", async () => {
-    const { view } = setup({ config: testConfig({ illustration: undefined }), cursor: 0 });
+    const { view } = setup({
+      config: testConfig({ illustration: undefined, template: undefined }),
+      cursor: 0,
+    });
     useSuggestionStore.getState().setGenerating(true);
     await expectRejected(view, "続きの提案を生成中です。終わってからもう一度押してください");
   });
@@ -665,6 +682,22 @@ describe("送るリクエスト(6.1, 6.2)", () => {
       extras: { top_k: 20 },
     });
     expect(generationProviderConfigs(stream)[0].timeoutMs).toBe(180000);
+
+    await stream.send("橋の上に少女が立つ。", "stop");
+    await stream.end();
+  });
+
+  it("illustration.template が無ければ、続き生成のテンプレートと同じ名前の挿し絵用のプリセットで包む", async () => {
+    const config = testConfig({ illustration: undefined, template: { preset: "chatml-nothink" } });
+    const { view, stream } = setup({ config });
+    await startIllustration(view, stream);
+
+    expect(stream.requests[0].promptTemplate).toEqual(
+      illustrationTemplate({ preset: "chatml-nothink" }),
+    );
+    // 挿し絵用のほかの値は既定値
+    expect(stream.requests[0].systemPrompt).toBe(DEFAULT_ILLUSTRATION_INSTRUCTION);
+    expect(stream.requests[0].parameters.maxTokens).toBe(4096);
 
     await stream.send("橋の上に少女が立つ。", "stop");
     await stream.end();
@@ -1654,10 +1687,12 @@ describe("llama-server で動かす(llama-server-provider 3.4, 4.2, 6.6, 8.4, 8.
   });
 
   it("挿し絵用の設定の不備・提案の生成中でも、関門を呼ばない", async () => {
-    const { view } = setupReady({ section: { ...sectionConfig(), illustration: undefined } });
+    const { view } = setupReady({
+      section: { ...sectionConfig(), illustration: undefined, template: undefined },
+    });
     expect(requestIllustration(view)).toBe(true);
     expect(mocks.toastError).toHaveBeenLastCalledWith(
-      "挿し絵用のテンプレートが指定されていません。sumire.json の illustration.template にプリセットか自由記述を書いてください",
+      "挿し絵用のテンプレートが決まりません。AI 設定画面でプロンプトテンプレートのプリセットを選ぶか、sumire.json の illustration.template にプリセットか自由記述を書いてください",
     );
 
     mocks.getActiveConfig.mockReturnValue(sectionConfig());

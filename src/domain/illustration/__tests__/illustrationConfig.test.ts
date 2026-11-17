@@ -61,6 +61,85 @@ describe("resolveIllustrationConfig: 設定の有無と形(規則 1〜3)", () =>
   });
 });
 
+describe("resolveIllustrationConfig: 続き生成のテンプレートを使う(規則 3)", () => {
+  it.each(["gemma4", "gemma4-think", "chatml", "chatml-nothink"] as const)(
+    "illustration が無く、続き生成が %s なら、同じ名前の挿し絵用のプリセットを使う",
+    (name) => {
+      const result = resolveIllustrationConfig(undefined, { preset: name });
+      expect(result.kind).toBe("ok");
+      if (result.kind !== "ok") return;
+      const expected = resolvePromptTemplate({ preset: name }, ILLUSTRATION_TEMPLATE_PRESETS);
+      if (expected.kind !== "ok") throw new Error("挿し絵用のプリセットを解決できない");
+      // 続き生成の表ではなく、挿し絵用の表の中身({{settings}} を置かない)
+      expect(result.settings.template).toEqual(expected.template);
+      expect(result.settings.template.slots.has("settings")).toBe(false);
+    },
+  );
+
+  it("illustration が null・template が無い・template が null でも、続き生成のプリセットを使う", () => {
+    for (const raw of [null, {}, { template: null }]) {
+      const result = resolveIllustrationConfig(raw, { preset: "gemma4" });
+      expect(result.kind).toBe("ok");
+      if (result.kind !== "ok") return;
+      expect(result.settings.template.source).toEqual({ kind: "preset", name: "gemma4" });
+    }
+  });
+
+  it("template が無くても、ほかの値は illustration から読む", () => {
+    const result = resolveIllustrationConfig(
+      { temperature: 0.3, maxTokens: 1024, timeoutMs: 5000, instruction: "指示" },
+      { preset: "chatml" },
+    );
+    expect(result).toMatchObject({
+      kind: "ok",
+      settings: { temperature: 0.3, maxTokens: 1024, timeoutMs: 5000, instruction: "指示" },
+    });
+  });
+
+  it("illustration が無ければ、ほかの値は既定値", () => {
+    const result = resolveIllustrationConfig(undefined, { preset: "gemma4" });
+    expect(result).toMatchObject({
+      kind: "ok",
+      settings: { ...ILLUSTRATION_DEFAULTS, instruction: DEFAULT_ILLUSTRATION_INSTRUCTION },
+    });
+  });
+
+  it("illustration.template があれば、続き生成のテンプレートより優先する", () => {
+    const result = resolveIllustrationConfig({ template: PRESET }, { preset: "chatml" });
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(result.settings.template.source).toEqual({ kind: "preset", name: "gemma4-think" });
+  });
+
+  it("illustration.template に不備があれば、続き生成のテンプレートには戻さない", () => {
+    expect(resolveIllustrationConfig({ template: { preset: "gemma5" } }, { preset: "gemma4" }))
+      .toEqual({
+        kind: "error",
+        error: { kind: "template", error: { kind: "unknownPreset", name: "gemma5" } },
+      });
+  });
+
+  it("illustration がオブジェクトでなければ、続き生成のテンプレートがあっても unreadable", () => {
+    expect(resolveIllustrationConfig("gemma4-think", { preset: "gemma4" })).toEqual({
+      kind: "error",
+      error: { kind: "unreadable" },
+    });
+  });
+
+  it.each([
+    ["指定なし", undefined],
+    ["null", null],
+    ["自由記述", { custom: "{{system}}{{settings}}{{body}}" }],
+    ["未知のプリセット", { preset: "gemma5" }],
+    ["読めない指定", { preset: "gemma4", custom: "{{body}}" }],
+  ])("続き生成のテンプレートが%sなら missingTemplate(素の連結に戻さない)", (_label, continuation) => {
+    expect(resolveIllustrationConfig({ temperature: 0.5 }, continuation)).toEqual({
+      kind: "error",
+      error: { kind: "missingTemplate" },
+    });
+  });
+});
+
 describe("resolveIllustrationConfig: テンプレート(規則 4)", () => {
   it("プリセットを挿し絵用の表で解決する", () => {
     const settings = okSettings({ template: PRESET });
