@@ -27,8 +27,10 @@ serde_json = "1"
 tauri-plugin-dialog = "2.7.0"
 tauri-plugin-window-state = "2.4.1"
 # OS keychain アクセス。keyring-core + windows-native-keyring-store の
-# 構成を採用(2026-05-10)。monolithic な keyring v3 は Windows backend で
-# Sumire 環境では silent failure することを実機検証で確認したため不採用。
+# 構成を採用(2026-05-10)。保存先を set_default_store で明示する。
+# 当時は「keyring v3 は Windows で動かない」と見立てたが、2026-11-18 に確かめ直すと、
+# v3 に feature(windows-native)を付けていなかったため mock の保存先に落ちていた
+# だけだった(src/commands/secrets.rs の冒頭のコメント)。
 keyring-core = "0.7"
 windows-native-keyring-store = "0.5"
 # プロバイダ通信を Rust 経由で行うための HTTP クライアント(provider-http-rust)。

@@ -8,13 +8,15 @@
 // - `keyring-core` のデフォルトストアは process グローバル。起動時に
 //   `set_default_store` で `windows-native-keyring-store` を一度だけ登録する
 //   (`OnceLock` で重複登録を防ぐ)。
-// - **コロン `:` を含む target 名は Windows Credential Manager で silent failure に
-//   なる(set_password が Ok を返すが実際には書き込まれない)。** 旧実装の
-//   `account = "provider:openai"` がこの罠に落ちて修正(2026-05-10)。
-//   provider 名は英数字 + ハイフンのみ受け付けるよう防御する。
-// - **monolithic な `keyring` crate(v3)も Windows で silent failure することを
-//   実機検証で確認(2026-05-10)。** よって `keyring-core` + `windows-native-
-//   keyring-store` を採用。
+// - 2026-05-10 に、set_password が Ok を返すのに何も保存されない失敗に当たり、
+//   `keyring-core` + `windows-native-keyring-store` に替えて直した。当時は
+//   「target 名の `:` が原因」「keyring v3 は Windows で動かない」と見立てたが、
+//   2026-11-18 に確かめ直して、どちらも外れていた。`:` を含む名前でも保存できる。
+//   keyring v3 は既定の feature が無く、`windows-native` を付けないと mock の
+//   保存先(OS に何も保存しない)を使う。症状はこれと一致する。いまの構成は保存先を
+//   `set_default_store` で明示するので、この罠には当たらない。
+// - provider 名は英数字 + ハイフンのみ受け付ける。target 名の形をそろえるための
+//   防御で、`:` で保存に失敗するからではない。
 // - キーの値の読み出しは command ではない `read_secret` に閉じ、WebView には
 //   値を渡さない(provider-http-rust Req 7.1)。値を返す command は公開しない。
 //   画面側は `has_secret` で設定済みかどうかだけを知る(Req 7.3)。
@@ -65,9 +67,10 @@ fn register_native_store() -> Result<(), String> {
 
 /// provider 識別子が安全な文字種だけで構成されているかを防御的に検証する。
 ///
-/// Windows Credential Manager は target name に `:` などの特殊文字が入ると
-/// silent failure になる(2026-05-10 の dogfood で確認)。
+/// target name の形(`Sumire.{provider}_api_key`)をそろえるため、
 /// 英数字とハイフン `-` のみ許容し、空文字も拒否する。
+/// (2026-05-10 には `:` で保存に失敗すると考えて入れたが、2026-11-18 に
+/// 確かめ直して、`:` は原因ではなかった。ファイル冒頭のコメントを参照)
 fn validate_provider(provider: &str) -> Result<(), String> {
     if provider.is_empty() {
         return Err("invalid provider: must not be empty".to_string());
