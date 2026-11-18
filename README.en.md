@@ -12,6 +12,8 @@ How Sumire separates a reasoning model's thinking blocks from a streaming respon
 
 The prompt template shapes that let Gemma 4 continue text through Completion are also written up on Zenn (in Japanese): [Gemma 4 に /v1/completions で文章の続きを書かせるプロンプトの形](https://zenn.dev/claudycat/articles/4016ffb2735fc3)
 
+The pitfall hit when storing API keys in the Windows Credential Manager from Rust is also written up on Zenn (in Japanese): [Rust の keyring 3 は、feature を付けないと黙って何も保存しない](https://zenn.dev/claudycat/articles/f5d4df964548e8)
+
 > **Note for English-speaking users:** Sumire is designed and optimized for **Japanese web novel writing**. UI translations are provided, but context handling, typography, and chapter/episode structure are tuned for Japanese-language workflows. English-language fiction is a future extension and not a primary use case.
 
 ## Status

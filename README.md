@@ -14,6 +14,8 @@ Sumire から `llama-server` を起動して使う仕組みと、そのときに
 
 Gemma 4 に Completion で続きを書かせるためのプロンプトテンプレートの形も、Zenn の記事にまとめました: [Gemma 4 に /v1/completions で文章の続きを書かせるプロンプトの形](https://zenn.dev/claudycat/articles/4016ffb2735fc3)
 
+API キーを Windows の資格情報マネージャーに保存するときに踏んだ罠も、Zenn の記事にまとめました: [Rust の keyring 3 は、feature を付けないと黙って何も保存しない](https://zenn.dev/claudycat/articles/f5d4df964548e8)
+
 ## ステータス
 
 MVP 完成、磨き込みフェーズ。配布バイナリは無署名で提供する(下記「インストール時の注意」参照)。
