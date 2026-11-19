@@ -9,6 +9,9 @@ import type { ProviderId } from "@/domain/providers/types";
  */
 export type PanelLayout = Record<string, number>;
 
+/** ファイル一覧の列を画面の左右どちらに置くか。 */
+export type FileTreePlacement = "left" | "right";
+
 interface UILayoutState {
   chapterGroupLayout: PanelLayout | null;
   rightColumnLayout: PanelLayout | null;
@@ -21,6 +24,8 @@ interface UILayoutState {
 
   historyPaneExpanded: boolean;
 
+  fileTreePlacement: FileTreePlacement;
+
   setChapterGroupLayout: (layout: PanelLayout) => void;
   setRightColumnLayout: (layout: PanelLayout) => void;
   toggleFileTreeCategory: (category: FileCategory) => void;
@@ -28,6 +33,7 @@ interface UILayoutState {
   toggleLLMSwitcher: () => void;
   toggleLLMProvider: (id: ProviderId) => void;
   toggleHistoryPane: () => void;
+  toggleFileTreePlacement: () => void;
 }
 
 const DEFAULT_CATEGORY_EXPANDED: Record<FileCategory, boolean> = {
@@ -60,6 +66,7 @@ const DEFAULT_PROVIDER_EXPANDED: Record<ProviderId, boolean> = {
  * - ファイルツリーのカテゴリ折りたたみ + アーカイブサブグループ折りたたみ
  * - LLM 切替ペインのヘッダ折りたたみ + プロバイダ行折りたたみ
  * - 履歴ペインのヘッダ折りたたみ
+ * - ファイル一覧の列の配置(左・右)
  *
  * プロジェクト切替で変わらない(カテゴリ・プロバイダ識別子は固定)ためグローバル保存。
  * 章ファイル選択や AI 設定値などの「コンテンツ寄り」は別ストアで管理。
@@ -74,6 +81,7 @@ export const useUILayoutStore = create<UILayoutState>()(
       llmSwitcherExpanded: true,
       llmProviderExpanded: DEFAULT_PROVIDER_EXPANDED,
       historyPaneExpanded: true,
+      fileTreePlacement: "left",
 
       setChapterGroupLayout: (layout) => set({ chapterGroupLayout: layout }),
       setRightColumnLayout: (layout) => set({ rightColumnLayout: layout }),
@@ -102,10 +110,17 @@ export const useUILayoutStore = create<UILayoutState>()(
         })),
       toggleHistoryPane: () =>
         set((state) => ({ historyPaneExpanded: !state.historyPaneExpanded })),
+      toggleFileTreePlacement: () =>
+        set((state) => ({
+          fileTreePlacement:
+            state.fileTreePlacement === "left" ? "right" : "left",
+        })),
     }),
     {
       name: "sumire-ui-layout",
       version: 1,
+      // 版は 1 のまま上げない。zustand 5 の persist は版が違い migrate が無いと保存データを
+      // 捨てるので、上げると幅の比や開け閉めまで消える。
       // 既定の merge は 1 段目だけを上書きするので、プロバイダの種別が増える前に保存した
       // `llmProviderExpanded` には新しい種別のキーが無い。既定値に重ねて補う。
       merge: (persisted, current) => {
@@ -120,6 +135,9 @@ export const useUILayoutStore = create<UILayoutState>()(
             ...current.llmProviderExpanded,
             ...saved.llmProviderExpanded,
           },
+          // 配置のキーが無い(本機能より前の保存データ)・壊れた値のときは左にする。
+          fileTreePlacement:
+            saved.fileTreePlacement === "right" ? "right" : "left",
         };
       },
     },
