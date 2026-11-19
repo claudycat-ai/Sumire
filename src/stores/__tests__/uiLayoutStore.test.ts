@@ -201,3 +201,92 @@ describe("fileTreePlacement", () => {
     },
   );
 });
+
+// `file-tree-placement` spec task 1.2: ファイル一覧の 5 カテゴリをまとめて開け閉めする操作。
+// 5 カテゴリだけが変わり、ほかの開け閉め・配置・幅の比は変わらず、保存先に書かれる。
+
+describe("setAllFileTreeCategories", () => {
+  // ほかの値を既定値と違う値にしておき、触れていないことを確かめられるようにする。
+  const otherState = {
+    chapterGroupLayout: { editor: 60, right: 40 },
+    rightColumnLayout: { memo: 30, settings: 70 },
+    fileTreeArchivedExpanded: {
+      chapters: true,
+      characters: false,
+      worldbuilding: true,
+      glossary: false,
+      plot: true,
+    },
+    llmSwitcherExpanded: false,
+    llmProviderExpanded: {
+      "openai-compatible": false,
+      openai: true,
+      "llama-server": false,
+    },
+    historyPaneExpanded: false,
+    fileTreePlacement: "right" as const,
+  };
+
+  beforeEach(() => {
+    useUILayoutStore.setState({
+      ...otherState,
+      // 開いているものと閉じているものを混ぜ、どちらの値にしても変化が見えるようにする。
+      fileTreeCategoryExpanded: {
+        chapters: true,
+        characters: false,
+        worldbuilding: true,
+        glossary: false,
+        plot: true,
+      },
+    });
+  });
+
+  it.each([[false], [true]])(
+    "%s にすると 5 カテゴリがすべてその値になり、ほかの開け閉め・配置・幅の比は変わらない",
+    (expanded) => {
+      useUILayoutStore.getState().setAllFileTreeCategories(expanded);
+
+      const state = useUILayoutStore.getState();
+      expect(state.fileTreeCategoryExpanded).toEqual({
+        chapters: expanded,
+        characters: expanded,
+        worldbuilding: expanded,
+        glossary: expanded,
+        plot: expanded,
+      });
+      expect(state.chapterGroupLayout).toEqual(otherState.chapterGroupLayout);
+      expect(state.rightColumnLayout).toEqual(otherState.rightColumnLayout);
+      expect(state.fileTreeArchivedExpanded).toEqual(
+        otherState.fileTreeArchivedExpanded,
+      );
+      expect(state.llmSwitcherExpanded).toBe(false);
+      expect(state.llmProviderExpanded).toEqual(otherState.llmProviderExpanded);
+      expect(state.historyPaneExpanded).toBe(false);
+      expect(state.fileTreePlacement).toBe("right");
+    },
+  );
+
+  it.each([[false], [true]])(
+    "%s にした結果が保存先に書かれる",
+    (expanded) => {
+      storage.clear();
+
+      useUILayoutStore.getState().setAllFileTreeCategories(expanded);
+
+      const saved = savedLayout();
+      expect(saved.state.fileTreeCategoryExpanded).toEqual({
+        chapters: expanded,
+        characters: expanded,
+        worldbuilding: expanded,
+        glossary: expanded,
+        plot: expanded,
+      });
+      expect(saved.state.fileTreeArchivedExpanded).toEqual(
+        otherState.fileTreeArchivedExpanded,
+      );
+      expect(saved.state.llmSwitcherExpanded).toBe(false);
+      expect(saved.state.historyPaneExpanded).toBe(false);
+      expect(saved.version).toBe(1);
+    },
+  );
+});

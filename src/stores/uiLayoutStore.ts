@@ -34,6 +34,8 @@ interface UILayoutState {
   toggleLLMProvider: (id: ProviderId) => void;
   toggleHistoryPane: () => void;
   toggleFileTreePlacement: () => void;
+  /** ファイル一覧の 5 カテゴリを同じ値にする。アーカイブ済み・LLM 切替・履歴には触れない。 */
+  setAllFileTreeCategories: (expanded: boolean) => void;
 }
 
 const DEFAULT_CATEGORY_EXPANDED: Record<FileCategory, boolean> = {
@@ -115,6 +117,16 @@ export const useUILayoutStore = create<UILayoutState>()(
           fileTreePlacement:
             state.fileTreePlacement === "left" ? "right" : "left",
         })),
+      // カテゴリの一覧は既定値のキーから作り、FileCategory の増減に追従させる。
+      setAllFileTreeCategories: (expanded) =>
+        set({
+          fileTreeCategoryExpanded: Object.fromEntries(
+            Object.keys(DEFAULT_CATEGORY_EXPANDED).map((category) => [
+              category,
+              expanded,
+            ]),
+          ) as Record<FileCategory, boolean>,
+        }),
     }),
     {
       name: "sumire-ui-layout",
