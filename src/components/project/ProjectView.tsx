@@ -5,9 +5,7 @@ import { selectSelectedSettings, useAppStore } from "@/stores/appStore";
 import { useSnapshotStore } from "@/stores/snapshotStore";
 import { useUILayoutStore } from "@/stores/uiLayoutStore";
 import { Button } from "@/components/ui/Button";
-import { FileTreePane } from "@/components/project/FileTreePane";
-import { LLMSwitcherPane } from "@/components/project/LLMSwitcherPane";
-import { HistoryPane } from "@/components/project/HistoryPane";
+import { FileTreeColumn } from "@/components/project/FileTreeColumn";
 import { StatusBar } from "@/components/project/StatusBar";
 import { ChapterEditor } from "@/components/editor/ChapterEditor";
 import { MemoPane } from "@/components/memo/MemoPane";
@@ -110,13 +108,9 @@ export function ProjectView() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <aside className="flex h-full w-[260px] flex-shrink-0 flex-col overflow-hidden border-r border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950">
-          <div className="flex-1 overflow-y-auto">
-            <FileTreePane projectPath={project.path} />
-          </div>
-          <LLMSwitcherPane />
-          <HistoryPane projectPath={project.path} />
-        </aside>
+        {/* 列は配置によらず常に Group の前に置く。右のときは列の側が order-last で
+            見た目の順だけを後ろへ回すので、切り替えても Group 以下はマウントし直されない。 */}
+        <FileTreeColumn projectPath={project.path} />
         <Group
           orientation="horizontal"
           className="flex h-full flex-1"
