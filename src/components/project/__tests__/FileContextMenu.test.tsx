@@ -199,3 +199,74 @@ describe("FileContextMenu", () => {
     expect(menu.style.top).toBe("456px");
   });
 });
+
+// 画面の右端・下端の近くで開いたとき、メニューを内側へずらす。
+// ファイル一覧を右に置くと、右端の近くで開くことが多くなる(file-tree-placement spec)。
+describe("FileContextMenu の画面端での位置", () => {
+  const MENU_WIDTH = 160;
+  const MENU_HEIGHT = 40;
+
+  function stubViewportAndMenuSize() {
+    vi.spyOn(window, "innerWidth", "get").mockReturnValue(1000);
+    vi.spyOn(window, "innerHeight", "get").mockReturnValue(800);
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: MENU_WIDTH,
+      bottom: MENU_HEIGHT,
+      width: MENU_WIDTH,
+      height: MENU_HEIGHT,
+      toJSON: () => ({}),
+    });
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  function renderAt(position: { x: number; y: number }) {
+    return render(
+      <FileContextMenu
+        open={true}
+        position={position}
+        target={activeTarget}
+        actions={Object.values(buildActions())}
+        onClose={vi.fn()}
+      />,
+    );
+  }
+
+  it("右端からはみ出すときは、クリックした位置の左側に出す", () => {
+    stubViewportAndMenuSize();
+    renderAt({ x: 950, y: 100 });
+    const menu = screen.getByRole("menu");
+    expect(menu.style.left).toBe(`${950 - MENU_WIDTH}px`);
+    expect(menu.style.top).toBe("100px");
+  });
+
+  it("下端からはみ出すときは、クリックした位置の上側に出す", () => {
+    stubViewportAndMenuSize();
+    renderAt({ x: 100, y: 790 });
+    const menu = screen.getByRole("menu");
+    expect(menu.style.left).toBe("100px");
+    expect(menu.style.top).toBe(`${790 - MENU_HEIGHT}px`);
+  });
+
+  it("別の位置で開き直したときも、その位置に合わせてずらす", () => {
+    stubViewportAndMenuSize();
+    const { rerender } = renderAt({ x: 100, y: 100 });
+    expect(screen.getByRole("menu").style.left).toBe("100px");
+    rerender(
+      <FileContextMenu
+        open={true}
+        position={{ x: 980, y: 100 }}
+        target={activeTarget}
+        actions={Object.values(buildActions())}
+        onClose={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("menu").style.left).toBe(`${980 - MENU_WIDTH}px`);
+  });
+});

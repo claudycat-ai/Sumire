@@ -53,13 +53,10 @@ export function FileContextMenu({
 }: FileContextMenuProps) {
   const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement | null>(null);
-  // 画面端反転後の最終座標。レイアウト確定後に補正する。
+  // 画面端反転後の最終座標。レイアウト確定後(描画の前)に補正する。
+  // 位置を決めるのはこの useLayoutEffect だけにする。以前は position の変化で
+  // 補正前の値に戻す useEffect があり、補正の後に走って補正を消していた。
   const [adjusted, setAdjusted] = useState(position);
-
-  // 入力 position が変わったら一旦そのまま反映(その後の useLayoutEffect で補正)。
-  useEffect(() => {
-    setAdjusted(position);
-  }, [position.x, position.y]);
 
   // メニュー描画後にビューポート端と比較して反転する。
   useLayoutEffect(() => {
@@ -78,10 +75,10 @@ export function FileContextMenu({
     if (position.y + rect.height > vh) {
       nextY = Math.max(0, position.y - rect.height);
     }
-    if (nextX !== adjusted.x || nextY !== adjusted.y) {
-      setAdjusted({ x: nextX, y: nextY });
-    }
-    // adjusted を依存に入れるとループするので除外。position と open のみで反応する。
+    setAdjusted((prev) =>
+      prev.x === nextX && prev.y === nextY ? prev : { x: nextX, y: nextY },
+    );
+    // position・open・target が変わったときだけ測り直す。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, position.x, position.y, target]);
 
@@ -133,7 +130,7 @@ export function FileContextMenu({
         left: `${adjusted.x}px`,
         top: `${adjusted.y}px`,
       }}
-      className="z-50 min-w-40 rounded-md border border-zinc-200 bg-white py-1 text-sm text-zinc-900 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
+      className="z-50 min-w-40 whitespace-nowrap rounded-md border border-zinc-200 bg-white py-1 text-sm text-zinc-900 shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-100"
     >
       {visibleActions.map((action) => (
         <button
